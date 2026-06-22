@@ -4,12 +4,11 @@ import type { Edge, Node } from '@xyflow/react'
 import {
   Background,
   BackgroundVariant,
-  ColorMode,
   MiniMap,
   ReactFlow,
   useReactFlow,
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import '@xyflow/react/dist/style.css'
@@ -32,7 +31,7 @@ export type SchemaGraphCanvasProps = {
 export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCanvasProps) {
   const { tables, relationships } = schema
   const reactFlowInstance = useReactFlow()
-  const selectedEdgeRef = useRef<Edge | undefined>(undefined)
+  const [selectedEdge, setSelectedEdge] = useState<Edge | undefined>(undefined)
   const { isDownloading, exportSchemaToImage } = useExportSchemaToImage()
 
   const nodeTypes = useMemo(
@@ -66,7 +65,7 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
 
   const handleSelectionChange = useCallback(
     ({ edges }: { edges: Edge[] }) => {
-      selectedEdgeRef.current = edges.length === 1 ? edges[0] : undefined
+      setSelectedEdge(edges.length === 1 ? edges[0] : undefined)
 
       const selectedNodeIds = new Set<string>()
       reactFlowInstance.getNodes().forEach((n) => {
@@ -159,7 +158,7 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
   const hasTables = tables.length > 0
 
   return (
-    <SchemaGraphContextProvider value={{ isDownloading, selectedEdge: selectedEdgeRef.current }}>
+    <SchemaGraphContextProvider value={{ isDownloading, selectedEdge }}>
       <div className="relative flex h-full w-full flex-col">
         <Toolbar
           tables={tables}
@@ -176,7 +175,6 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
         <div className="flex-1">
           {hasTables ? (
             <ReactFlow
-              colorMode={'' as unknown as ColorMode}
               defaultNodes={[]}
               defaultEdges={[]}
               defaultEdgeOptions={{
