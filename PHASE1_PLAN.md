@@ -1,103 +1,259 @@
-# Phase 1 Refactor Plan — Dead Code + Tooling
+# Phase 1 Refactor Plan — Safe Cleanup + Tooling
 
-Addresses the fallow report (10 dead-code issues, duplicate-export pair) and adds
-the lint/typecheck tooling that `AGENTS.md` instructs but doesn't exist yet.
-Out of scope: `parseSql.ts` dedup and decomposition (kept as follow-ups; see
-`AUDIT.md` item #2 and fallow refactoring target #2).
+Updated: 2026-06-23  
+Related docs: `fallow.md`, `gpt5.5-report.md`, `AUDIT.md`, `test.md`
 
-## Code changes
+## Goal
 
-### 1. Create `src/lib/constants.ts` (new file)
+Phase 1 applies low-risk cleanup and baseline tooling without changing parser semantics or graph behavior beyond intentionally deduplicating SQL copy output.
 
-Single source of truth for layout dimensions used by both the dagre layout
-(`lib/graph.ts`) and the node component (`components/TableNode.tsx`). A
-dedicated module avoids pulling dagre into the TableNode client bundle via
-tree-shaking edge cases.
+This phase addresses the safest Fallow findings:
+
+- Unused exports.
+- Duplicate table layout constants.
+- Duplicated SQL serialization.
+- Internal-only exports.
+- Missing repeatable validation scripts.
+
+## Non-Goals
+
+Do **not** do these in Phase 1:
+
+- Do not refactor `parseSql.ts` internals yet.
+- Do not add `sourceSchema` / `targetSchema` to `ParsedRelationship` yet.
+- Do not change graph node IDs to schema-qualified IDs yet.
+- Do not run `fallow fix` blindly.
+- Do not suppress findings with `.fallowrc.json` when a code cleanup is straightforward.
+
+These belong in later phases after tests exist.
+
+## Preconditions
+
+Before editing code, confirm current baseline:
+
+```sh
+npx tsc --noEmit
+npm run build
+npx fallow dead-code
+```
+
+Expected current Fallow dead-code findings:
+
+- `TABLE_NODE_WIDTH` / `TABLE_NODE_ROW_HEIGHT` duplicate exports.
+- `getTableDefinitionAsMarkdown` exported but internal-only.
+- `tablesToSQL` exported but unused by canvas.
+- `SchemaGraphContext` exported but internal-only.
+- `ToolbarAction` unused type export.
+
+## Code Changes
+
+### 1. Create `src/lib/constants.ts`
+
+New file:
 
 ```ts
 export const TABLE_NODE_WIDTH = 320
 export const TABLE_NODE_ROW_HEIGHT = 40
 ```
 
-### 2. `src/lib/graph.ts`
+Rationale:
 
-- Delete `export const TABLE_NODE_WIDTH` / `TABLE_NODE_ROW_HEIGHT` (lines 7-8).
-- Add `import { TABLE_NODE_WIDTH, TABLE_NODE_ROW_HEIGHT } from './constants'`.
-- Internal usage at lines 155-156 stays as-is.
+- Single source of truth for layout dimensions.
+- Avoids duplicate exports from `graph.ts` and `TableNode.tsx`.
+- Keeps UI components from importing graph/dagre code just to get constants.
 
-### 3. `src/components/TableNode.tsx`
-
-- Delete `export const TABLE_NODE_WIDTH` / `TABLE_NODE_ROW_HEIGHT` (lines 12-13).
-- Add `import { TABLE_NODE_WIDTH } from '@/lib/constants'` (only `WIDTH` is used
-  at line 57; `ROW_HEIGHT` was dead even within this file).
-- Internal usage at line 57 stays as-is.
-
-### 4. `src/lib/utils.ts`
-
-- Drop `export` from `getTableDefinitionAsMarkdown` (line 26) — it's used only
-  internally by `getSchemaAsMarkdown` (line 79) and has no external consumer.
-- `tablesToSQL` stays exported (it gains a real consumer in step 5).
-
-### 5. `src/components/SchemaGraphCanvas.tsx`
-
-Replace the inline `copyAsSQL` body (lines 114-127) with a call to `tablesToSQL`,
-turning the dead export into a used one and removing the duplicate SQL
-generation logic.
-
-- Add `tablesToSQL` to the existing import from `@/lib/utils` (line 17).
-- New body:
-
-  ```ts
-  const copyAsSQL = useCallback(() => {
-    copyToClipboard(tablesToSQL(tables), () =>
-      toast.success('Schema SQL copied to clipboard')
-    )
-  }, [tables])
-  ```
-
-**Behavior change:** the copied SQL now includes `DEFAULT <value>` and
-`GENERATED ALWAYS AS IDENTITY` clauses (which the inline implementation
-omitted). This is the intended dedup (AUDIT item #2).
-
-`tables` is `ParsedTable[]` (from `schema.tables` at line 33), which matches
-`tablesToSQL`'s parameter type.
-
-### 6. `src/components/SchemaGraphContext.tsx`
-
-- Drop `export` from `SchemaGraphContext` (line 11) — used only internally at
-  lines 19 and 22. External consumers import `SchemaGraphContextProvider` and
-  `useSchemaGraphContext`.
-
-### 7. `src/lib/types.ts`
-
-- Delete the `ToolbarAction` type (lines 60-67) — never imported anywhere.
-
-## Tooling changes
-
-### 8. `package.json` scripts
+### 2. Update `src/lib/graph.ts`
 
 Add:
 
+```ts
+import { TABLE_NODE_ROW_HEIGHT, TABLE_NODE_WIDTH } from './constants'
+```
+
+Remove:
+
+```ts
+export const TABLE_NODE_WIDTH = 320
+export const TABLE_NODE_ROW_HEIGHT = 40
+```
+
+Keep internal layout usage unchanged:
+
+```ts
+width: TABLE_NODE_WIDTH / 2,
+height: (TABLE_NODE_ROW_HEIGHT / 2) * (node.data.columns.length + 1),
+```
+
+Expected impact:
+
+- Removes two unused exports.
+- Removes one half of the duplicate-export pair.
+
+### 3. Update `src/components/TableNode.tsx`
+
+Add:
+
+```ts
+import { TABLE_NODE_WIDTH } from '@/lib/constants'
+```
+
+Remove local constants:
+
+```ts
+export const TABLE_NODE_WIDTH = 320
+export const TABLE_NODE_ROW_HEIGHT = 40
+```
+
+Keep usage:
+
+```tsx
+style={{ width: TABLE_NODE_WIDTH / 2 }}
+```
+
+Expected impact:
+
+- Removes two unused exports.
+- Deletes `TABLE_NODE_ROW_HEIGHT`, which is unused in this component.
+
+### 4. Update `src/lib/utils.ts`
+
+Change:
+
+```ts
+export function getTableDefinitionAsMarkdown(...)
+```
+
+to:
+
+```ts
+function getTableDefinitionAsMarkdown(...)
+```
+
+Keep `tablesToSQL` exported because Phase 1 will make the canvas use it.
+
+Expected impact:
+
+- Removes one unused export.
+- Keeps markdown behavior unchanged.
+
+### 5. Update `src/components/SchemaGraphCanvas.tsx`
+
+Update import:
+
+```ts
+import { copyToClipboard, getSchemaAsMarkdown, tablesToSQL } from '@/lib/utils'
+```
+
+Replace inline `copyAsSQL` with:
+
+```ts
+const copyAsSQL = useCallback(() => {
+  copyToClipboard(tablesToSQL(tables), () => toast.success('Schema SQL copied to clipboard'))
+}, [tables])
+```
+
+Intentional behavior change:
+
+- Copied SQL now includes `DEFAULT <value>` and `GENERATED ALWAYS AS IDENTITY` clauses because `tablesToSQL` includes them.
+- This removes duplicate SQL serialization and makes `tablesToSQL` a real consumer-facing utility.
+
+### 6. Update `src/components/SchemaGraphContext.tsx`
+
+Change:
+
+```ts
+export const SchemaGraphContext = createContext<...>(...)
+```
+
+to:
+
+```ts
+const SchemaGraphContext = createContext<...>(...)
+```
+
+Keep these exports:
+
+```ts
+export function SchemaGraphContextProvider(...)
+export function useSchemaGraphContext()
+```
+
+Expected impact:
+
+- Removes one unused export while preserving public API.
+
+### 7. Update `src/lib/types.ts`
+
+Delete unused `ToolbarAction`:
+
+```ts
+export type ToolbarAction =
+  | 'copy-sql'
+  | 'copy-markdown'
+  | 'download-png'
+  | 'download-svg'
+  | 'auto-layout'
+  | 'find-table'
+  | 'reset-sql'
+  | 'load-example'
+```
+
+Expected impact:
+
+- Removes one unused type export.
+
+### 8. Optional low-risk toolbar cleanup
+
+File: `src/components/Toolbar.tsx`
+
+Extract repeated class string:
+
+```ts
+const toolbarButtonClass =
+  'flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+```
+
+Then replace repeated `className="..."` values with:
+
+```tsx
+className={toolbarButtonClass}
+```
+
+This is optional for Phase 1 because Fallow’s primary Phase 1 findings are exports/dead code, not style duplication.
+
+## Tooling Changes
+
+### 9. Add `typecheck` script
+
+Update `package.json`:
+
 ```json
-"typecheck": "tsc --noEmit",
-"lint": "eslint ."
+"typecheck": "tsc --noEmit"
 ```
 
-`next lint` is **removed in Next.js 16** (verified in
-`node_modules/next/dist/docs/01-app/03-api-reference/05-config/03-eslint.md`).
-The new approach uses the ESLint CLI directly with `eslint-config-next`'s
-flat config.
+Then prefer:
 
-### 9. Install ESLint deps
-
+```sh
+npm run typecheck
 ```
+
+instead of direct `npx tsc --noEmit`.
+
+### 10. Add ESLint for Next.js 16
+
+Install:
+
+```sh
 npm i -D eslint eslint-config-next
 ```
 
-### 10. Create `eslint.config.mjs`
+Update `package.json`:
 
-Per the Next 16 ESLint guide (core-web-vitals + typescript, with default
-ignores):
+```json
+"lint": "eslint ."
+```
+
+Create `eslint.config.mjs`:
 
 ```js
 import { defineConfig, globalIgnores } from 'eslint/config'
@@ -118,27 +274,95 @@ const eslintConfig = defineConfig([
 export default eslintConfig
 ```
 
-## Verification
+Important:
 
-1. `npm run typecheck` — must pass.
-2. `npm run lint` — must pass. If pre-existing lint errors surface (e.g.
-   `Record<string, any>` casts, `colorMode={'' as unknown as ColorMode}`),
-   they will be reported rather than silently fixed as part of this phase.
-3. Re-run `fallow` — expect unused exports 21.1% → 0%, duplicate-export pair
-   resolved.
+- Do not use `next lint`; it is removed in Next.js 16.
+- If lint surfaces existing `any` warnings in `parseSql.ts`, report them rather than refactoring parser internals in Phase 1.
 
-## Out of scope (follow-ups)
+## Validation
 
-- `parseSql.ts` dedup: merge `getInlineReference` / `getTableLevelReference`
-  (byte-identical); extract shared FK-relationship builder for the two clone
-  groups (`dup:e1014e9c` at 314-333 ↔ 357-376). See `AUDIT.md` item #2.
-- `parseSql` decomposition: split the 194-LOC function (cognitive 193) into
-  `parseCreateTable` / `parseTableConstraints` / `parseAlterTable`. Risky
-  without tests (AUDIT item #9); out of scope for Phase 1.
-- Other `AUDIT.md` items: filteredSchema bug, `isNotNull` early return,
-  `handleLoadExample` setTimeout, React Flow attribution, toolbar `Button`
-  primitive, etc. Tracked in `AUDIT.md` prioritized fix order.
+After Phase 1 code changes:
+
+```sh
+npm run typecheck
+npm run build
+npx fallow dead-code
+```
+
+If ESLint was added:
+
+```sh
+npm run lint
+```
+
+Expected Fallow improvement:
+
+- Unused exports should drop significantly.
+- Duplicate-export pair for `TABLE_NODE_WIDTH` / `TABLE_NODE_ROW_HEIGHT` should be resolved.
+- `tablesToSQL` should no longer be reported as unused.
+
+If any dead exports remain:
+
+```sh
+npx fallow dead-code --trace <file>:<symbol>
+```
+
+## Rollback Plan
+
+If a Phase 1 change causes problems:
+
+1. Revert only the failing file.
+2. Run `npm run typecheck` or `npx tsc --noEmit`.
+3. Run `npm run build`.
+4. Leave parser and relationship model unchanged.
+
+## Deferred Follow-Ups
+
+### Phase 2 — Tests
+
+Use `test.md` to add Vitest and parser-focused tests.
+
+Key first tests:
+
+- Empty input.
+- Basic `CREATE TABLE`.
+- Nullable default behavior.
+- Inline FK.
+- Table-level FK.
+- `ALTER TABLE` FK.
+- Cross-schema FK.
+
+### Phase 3 — Schema-qualified relationships
+
+After tests exist:
+
+1. Add `sourceSchema` and `targetSchema` to `ParsedRelationship`.
+2. Update all relationship builders in `parseSql.ts`.
+3. Use schema-qualified React Flow node IDs in `graph.ts`.
+4. Fix `page.tsx` relationship filtering by schema fields.
+5. Fix synthetic foreign node labels.
+
+### Phase 4 — Parser refactor
+
+After tests and schema-qualified relationships:
+
+1. Merge `getInlineReference` and `getTableLevelReference` into `getReferenceInfo`.
+2. Extract shared FK relationship builder.
+3. Split `parseSql` into smaller statement-specific helpers.
+4. Replace broad `Record<string, any>` casts with local type guards where practical.
+
+### Phase 5 — UX hardening
+
+- Add `src/app/error.tsx`.
+- Improve clipboard failure toasts.
+- Improve export-to-image error messages.
+- Verify/remove unused public SVG assets.
 
 ## Results
 
-_Filled in after execution._
+_Not executed yet. Fill this section after implementation with:_
+
+- Files changed.
+- Commands run.
+- Fallow before/after summary.
+- Any remaining warnings or deferred items.

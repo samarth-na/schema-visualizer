@@ -57,12 +57,4 @@ export type EdgeData = {
   targetColumnName: string
 }
 
-export type ToolbarAction =
-  | 'copy-sql'
-  | 'copy-markdown'
-  | 'download-png'
-  | 'download-svg'
-  | 'auto-layout'
-  | 'find-table'
-  | 'reset-sql'
-  | 'load-example'
+

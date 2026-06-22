@@ -5,12 +5,11 @@ import { Copy, DiamondIcon, Fingerprint, Hash, Key, Table2 } from 'lucide-react'
 import { memo } from 'react'
 
 import { cn, copyToClipboard } from '@/lib/utils'
+import { TABLE_NODE_WIDTH } from '@/lib/constants'
 import { useSchemaGraphContext } from './SchemaGraphContext'
 import type { TableNodeData } from '@/lib/types'
 
 // ReactFlow is scaling everything by a factor of 2
-export const TABLE_NODE_WIDTH = 320
-export const TABLE_NODE_ROW_HEIGHT = 40
 
 type TableNodeOwnProps = NodeProps<Node<TableNodeData>>
 

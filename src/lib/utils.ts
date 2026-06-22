@@ -23,7 +23,7 @@ function escapeForMarkdown(str: string) {
     .replace(/\n/g, ' ')
 }
 
-export function getTableDefinitionAsMarkdown(table: {
+function getTableDefinitionAsMarkdown(table: {
   name: string
   comment: string | null
   columns: {

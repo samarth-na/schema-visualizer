@@ -3,9 +3,7 @@ import { Position } from '@xyflow/react'
 import type { Edge, Node } from '@xyflow/react'
 
 import type { ParsedRelationship, ParsedTable, TableNodeData } from './types'
-
-export const TABLE_NODE_WIDTH = 320
-export const TABLE_NODE_ROW_HEIGHT = 40
+import { TABLE_NODE_ROW_HEIGHT, TABLE_NODE_WIDTH } from './constants'
 
 const NODE_SEP = 25
 const RANK_SEP = 50

@@ -27,10 +27,6 @@
   --xy-handle-background: transparent;
 }
 
-.react-flow__attribution {
-  display: none;
-}
-
 /* Custom scrollbar for the SQL textarea */
 textarea::-webkit-scrollbar {
   width: 8px;

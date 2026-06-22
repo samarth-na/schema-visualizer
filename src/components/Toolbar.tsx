@@ -18,6 +18,9 @@ type ToolbarProps = {
   isDownloading?: boolean
 }
 
+const toolbarButtonClass =
+  'flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+
 export function Toolbar({
   tables,
   disabled,
@@ -48,7 +51,7 @@ export function Toolbar({
           type="button"
           disabled={disabled || isDownloading}
           onClick={() => handleCopy('sql')}
-          className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          className={toolbarButtonClass}
         >
           {copied === 'sql' ? <Check size={14} /> : <Copy size={14} />}
           Copy SQL
@@ -57,7 +60,7 @@ export function Toolbar({
           type="button"
           disabled={disabled || isDownloading}
           onClick={() => handleCopy('md')}
-          className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          className={toolbarButtonClass}
         >
           {copied === 'md' ? <Check size={14} /> : <Copy size={14} />}
           Copy Markdown
@@ -67,7 +70,7 @@ export function Toolbar({
             type="button"
             disabled={disabled || isDownloading}
             onClick={onDownloadPng}
-            className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            className={toolbarButtonClass}
           >
             PNG
           </button>
@@ -77,7 +80,7 @@ export function Toolbar({
             type="button"
             disabled={disabled || isDownloading}
             onClick={onDownloadSvg}
-            className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            className={toolbarButtonClass}
           >
             SVG
           </button>
@@ -86,7 +89,7 @@ export function Toolbar({
           type="button"
           disabled={disabled || isDownloading}
           onClick={onResetLayout}
-          className="flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          className={toolbarButtonClass}
         >
           <LayoutGrid size={14} />
           Auto layout

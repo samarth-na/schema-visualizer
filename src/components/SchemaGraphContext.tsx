@@ -8,7 +8,7 @@ export type SchemaGraphContextType = {
   selectedEdge: Edge | undefined
 }
 
-export const SchemaGraphContext = createContext<SchemaGraphContextType | null>(null)
+const SchemaGraphContext = createContext<SchemaGraphContextType | null>(null)
 
 export const SchemaGraphContextProvider = ({
   children,

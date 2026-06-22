@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 import '@xyflow/react/dist/style.css'
 
-import { copyToClipboard, getSchemaAsMarkdown } from '@/lib/utils'
+import { copyToClipboard, getSchemaAsMarkdown, tablesToSQL } from '@/lib/utils'
 import { getGraphDataFromTables, getLayoutedElementsViaDagre } from '@/lib/graph'
 import { SchemaGraphContextProvider } from './SchemaGraphContext'
 import { DefaultEdge } from './DefaultEdge'
@@ -111,18 +111,7 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
   )
 
   const copyAsSQL = useCallback(() => {
-    const text = tables
-      .map((t) => {
-        const cols = t.columns
-          .map(
-            (c) =>
-              `  ${c.name} ${c.dataType}${c.isPrimaryKey ? ' PRIMARY KEY' : ''}${c.isNullable ? '' : ' NOT NULL'}${c.isUnique ? ' UNIQUE' : ''}`
-          )
-          .join(',\n')
-        return `CREATE TABLE ${t.schema}.${t.name} (\n${cols}\n);`
-      })
-      .join('\n\n')
-    copyToClipboard(text, () => toast.success('Schema SQL copied to clipboard'))
+    copyToClipboard(tablesToSQL(tables), () => toast.success('Schema SQL copied to clipboard'))
   }, [tables])
 
   const copyAsMarkdown = useCallback(() => {
@@ -188,7 +177,6 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
               minZoom={0.2}
               maxZoom={2}
               onlyRenderVisibleElements
-              proOptions={{ hideAttribution: true }}
               onSelectionChange={handleSelectionChange}
             >
               <Background
