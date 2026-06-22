@@ -20,21 +20,25 @@ export function getGraphDataFromTables(
     return { nodes: [], edges: [] }
   }
 
-  const tableByName = new Map<string, ParsedTable>()
-  const columnIdByName = new Map<string, Map<string, string>>()
+  const tableKey = (schema: string, table: string) => `${schema}.${table}`
+
+  const tableByKey = new Map<string, ParsedTable>()
+  const columnIdByKey = new Map<string, Map<string, string>>()
 
   for (const table of tables) {
-    tableByName.set(table.name, table)
+    const key = tableKey(table.schema, table.name)
+    tableByKey.set(key, table)
     const colMap = new Map<string, string>()
     for (const col of table.columns) {
-      colMap.set(col.name, `${table.name}.${col.name}`)
+      colMap.set(col.name, `${key}.${col.name}`)
     }
-    columnIdByName.set(table.name, colMap)
+    columnIdByKey.set(key, colMap)
   }
 
   const nodes: Node<TableNodeData>[] = tables.map((table) => {
+    const key = tableKey(table.schema, table.name)
     const columns = table.columns.map((column) => ({
-      id: `${table.name}.${column.name}`,
+      id: `${key}.${column.name}`,
       name: column.name,
       format: column.dataType,
       isPrimary: column.isPrimaryKey,
@@ -45,10 +49,10 @@ export function getGraphDataFromTables(
     }))
 
     return {
-      id: table.name,
+      id: key,
       type: 'table',
       data: {
-        id: table.name,
+        id: key,
         schema: table.schema,
         name: table.name,
         comment: table.comment,
@@ -66,19 +70,21 @@ export function getGraphDataFromTables(
   }
 
   for (const rel of uniqueRels.values()) {
-    // Skip relationships pointing outside the selected schema
-    const targetTable = tableByName.get(rel.targetTable)
+    const sourceKey = tableKey(rel.sourceSchema, rel.sourceTable)
+    const targetKey = tableKey(rel.targetSchema, rel.targetTable)
+    const targetTable = tableByKey.get(targetKey)
+
     if (!targetTable) {
       // Cross-schema reference: create a synthetic foreign node
-      const targetId = `${rel.targetTable}.${rel.targetColumn}`
+      const targetId = `${targetKey}.${rel.targetColumn}`
       if (!nodes.some((n) => n.id === targetId)) {
         nodes.push({
           id: targetId,
           type: 'table',
           data: {
             id: targetId,
-            schema: rel.targetTable, // we don't know schema; use table name as placeholder
-            name: targetId,
+            schema: rel.targetSchema,
+            name: `${rel.targetSchema}.${rel.targetTable}.${rel.targetColumn}`,
             comment: null,
             isForeign: true,
             columns: [],
@@ -87,21 +93,21 @@ export function getGraphDataFromTables(
         })
       }
 
-      const sourceColId = columnIdByName.get(rel.sourceTable)?.get(rel.sourceColumn)
+      const sourceColId = columnIdByKey.get(sourceKey)?.get(rel.sourceColumn)
       if (sourceColId) {
         edges.push({
           id: rel.id,
-          source: rel.sourceTable,
+          source: sourceKey,
           sourceHandle: sourceColId,
           target: targetId,
           targetHandle: targetId,
           type: 'default',
           data: {
             sourceName: rel.sourceTable,
-            sourceSchemaName: schemaName,
+            sourceSchemaName: rel.sourceSchema,
             sourceColumnName: rel.sourceColumn,
             targetName: rel.targetTable,
-            targetSchemaName: rel.targetTable,
+            targetSchemaName: rel.targetSchema,
             targetColumnName: rel.targetColumn,
           },
         })
@@ -109,23 +115,23 @@ export function getGraphDataFromTables(
       continue
     }
 
-    const sourceColId = columnIdByName.get(rel.sourceTable)?.get(rel.sourceColumn)
-    const targetColId = columnIdByName.get(rel.targetTable)?.get(rel.targetColumn)
+    const sourceColId = columnIdByKey.get(sourceKey)?.get(rel.sourceColumn)
+    const targetColId = columnIdByKey.get(targetKey)?.get(rel.targetColumn)
 
     if (sourceColId && targetColId) {
       edges.push({
         id: rel.id,
-        source: rel.sourceTable,
+        source: sourceKey,
         sourceHandle: sourceColId,
-        target: rel.targetTable,
+        target: targetKey,
         targetHandle: targetColId,
         type: 'default',
         data: {
           sourceName: rel.sourceTable,
-          sourceSchemaName: schemaName,
+          sourceSchemaName: rel.sourceSchema,
           sourceColumnName: rel.sourceColumn,
           targetName: rel.targetTable,
-          targetSchemaName: targetTable.schema,
+          targetSchemaName: rel.targetSchema,
           targetColumnName: rel.targetColumn,
         },
       })

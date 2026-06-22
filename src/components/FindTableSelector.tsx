@@ -20,7 +20,10 @@ export const FindTableSelector = forwardRef<HTMLDivElement, FindTableSelectorPro
     const filtered = useMemo(() => {
       const term = search.trim().toLowerCase()
       if (!term) return tables
-      return tables.filter((t) => t.name.toLowerCase().includes(term))
+      return tables.filter((t) => {
+        const qualified = `${t.schema}.${t.name}`.toLowerCase()
+        return qualified.includes(term)
+      })
     }, [tables, search])
 
     return (
@@ -57,13 +60,13 @@ export const FindTableSelector = forwardRef<HTMLDivElement, FindTableSelectorPro
                   <button
                     type="button"
                     onClick={() => {
-                      onSelect(table.name)
+                      onSelect(`${table.schema}.${table.name}`)
                       setOpen(false)
                       setSearch('')
                     }}
                     className="w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   >
-                    {table.name}
+                    {`${table.schema}.${table.name}`}
                   </button>
                 </li>
               ))}

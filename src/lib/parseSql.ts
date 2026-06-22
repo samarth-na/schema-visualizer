@@ -27,6 +27,9 @@ function parseDataType(definition: unknown): string {
   if (typeof def.dataType === 'string') {
     const base = def.dataType.toUpperCase()
     if (def.length != null && typeof def.length === 'number') {
+      if (def.scale != null && typeof def.scale === 'number') {
+        return `${base}(${def.length}, ${def.scale})`
+      }
       return `${base}(${def.length})`
     }
     if (Array.isArray(def.length) && def.length.length > 0) {
@@ -46,7 +49,8 @@ function parseDataType(definition: unknown): string {
 }
 
 function isNotNull(definition: unknown): boolean {
-  if (!definition || typeof definition !== 'object') return true // default to not null? Actually default is nullable unless specified. Keep false.
+  // Without explicit definition metadata, assume the column is nullable.
+  if (!definition || typeof definition !== 'object') return false
   const def = definition as Record<string, any>
   const nullable = def.nullable
   if (!nullable) return false
@@ -274,8 +278,10 @@ export function parseSql(sql: string): ParsedSchema {
           relationships.push({
             id: `${schema}.${table}.${colName}->${inlineRef.schema}.${inlineRef.table}.${inlineRef.columns[0]}_${nextRelId()}`,
             constraintName: `${table}_${colName}_fkey`,
+            sourceSchema: schema,
             sourceTable: table,
             sourceColumn: colName,
+            targetSchema: inlineRef.schema,
             targetTable: inlineRef.table,
             targetColumn: inlineRef.columns[0],
           })
@@ -323,8 +329,10 @@ export function parseSql(sql: string): ParsedSchema {
           relationships.push({
             id: `${constraintName}_${sourceCol}_${i}_${nextRelId()}`,
             constraintName,
+            sourceSchema: schema,
             sourceTable: table,
             sourceColumn: sourceCol,
+            targetSchema: refInfo.schema,
             targetTable: refInfo.table,
             targetColumn: targetCol,
           })
@@ -366,8 +374,10 @@ export function parseSql(sql: string): ParsedSchema {
             relationships.push({
               id: `${constraintName}_${sourceCol}_${i}_alter_${nextRelId()}`,
               constraintName,
+              sourceSchema: schema,
               sourceTable: table,
               sourceColumn: sourceCol,
+              targetSchema: refInfo.schema,
               targetTable: refInfo.table,
               targetColumn: targetCol,
             })

@@ -12,8 +12,10 @@ export type ParsedColumn = {
 export type ParsedRelationship = {
   id: string
   constraintName: string
+  sourceSchema: string
   sourceTable: string
   sourceColumn: string
+  targetSchema: string
   targetTable: string
   targetColumn: string
 }
