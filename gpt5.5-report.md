@@ -2,13 +2,22 @@
 
 Reviewed project: `schema-visualizer`  
 Date: 2026-06-23  
-Stack: Next.js 16.2.9, React 19.2.4, Tailwind 4, `@xyflow/react`, `@dagrejs/dagre`, `node-sql-parser`
+Stack: Next.js 16.2.9, React 19.2.4, Tailwind 4, `@xyflow/react`, `@dagrejs/dagre`, `node-sql-parser`  
+Companion reports: `AUDIT.md`, `PHASE1_PLAN.md`, `fallow.md`
 
 ## Executive Summary
 
-This is a compact single-page schema visualizer with a clear separation between parsing/layout logic in `src/lib/` and UI/rendering code in `src/components/`. The project currently builds and type-checks successfully, and the overall architecture is understandable for a small App Router application.
+`schema-visualizer` is a compact single-page App Router application that parses PostgreSQL DDL and renders an interactive ER diagram. The codebase is readable and builds successfully, with a sensible split between UI components in `src/components/` and pure logic in `src/lib/`.
 
-The highest-risk areas are correctness around multi-schema foreign keys, PostgreSQL DDL parsing edge cases, React Flow license compliance, and missing automated tests/tooling. The app is usable, but parser behavior is fragile because it relies on untyped `node-sql-parser` AST shapes and has no regression tests.
+The main risks are not framework setup or basic architecture. They are:
+
+1. Relationship correctness for multi-schema PostgreSQL databases.
+2. Parser fragility around untyped `node-sql-parser` AST shapes.
+3. Missing tests around the parser and graph transformations.
+4. React Flow attribution/license compliance.
+5. Dead exports, duplicated constants, duplicated SQL serialization, and high-complexity functions reported by Fallow.
+
+The recommended approach is to make small safe cleanup changes first, add parser tests, then refactor schema-qualified relationship handling and parser internals.
 
 ## Validation Performed
 
@@ -16,26 +25,97 @@ The highest-risk areas are correctness around multi-schema foreign keys, Postgre
 |---|---|
 | `npx tsc --noEmit` | Passed |
 | `npm run build` | Passed |
+| `npx fallow` | Ran; exited non-zero because findings were detected |
+| `npx fallow dead-code` | Ran; found unused exports/types and duplicate exports |
+| `npx fallow dupes` | Ran; found duplicated blocks in `src/lib/parseSql.ts` |
+| `npx fallow health` | Ran; reported health score `82 B` |
+| `npx fallow fix --dry-run` | Ran; preview only, no files modified |
 
-No lint or test command exists in `package.json`.
+There are currently no `lint` or `test` scripts in `package.json`.
+
+## Current Fallow Snapshot
+
+From `fallow.md`:
+
+- Files analyzed: 18
+- LOC: 1,961
+- Dead files: 0.0%
+- Dead exports: 21.1% (`8 of 38`)
+- Duplication: 52 lines, 2.8%, across 1 file
+- Maintainability index: 89.0, rated good
+- Health score: 82 B
+- Top refactoring targets:
+  1. `src/components/TableNode.tsx` — dead exports
+  2. `src/lib/parseSql.ts` — complexity and duplication
+  3. `src/lib/graph.ts` — dead exports
 
 ## Strengths
 
-- `src/app/page.tsx` keeps the app flow simple: SQL input, parse, schema selection, and graph rendering.
-- `src/lib/types.ts` centralizes the project’s app-level schema, table, column, and edge data types.
+- `src/app/page.tsx` keeps the product flow straightforward: SQL input, parse, schema selection, graph render.
+- `src/lib/types.ts` centralizes app-level schema, table, column, and edge data types.
 - Pure logic is mostly isolated in `src/lib/parseSql.ts`, `src/lib/graph.ts`, and `src/lib/utils.ts`.
-- React Flow integration uses memoized `nodeTypes` and `edgeTypes` in `src/components/SchemaGraphCanvas.tsx`, avoiding a common performance footgun.
+- React Flow integration memoizes `nodeTypes` and `edgeTypes` in `src/components/SchemaGraphCanvas.tsx`.
 - `TableNode` is memoized with a custom comparator in `src/components/TableNode.tsx`.
-- The project is already on modern Next.js 16, React 19, and Tailwind 4.
-- Production build succeeds with Turbopack.
+- Production build succeeds on Next.js 16/Turbopack.
+- The repository already has useful audit documents: `AUDIT.md`, `PHASE1_PLAN.md`, and `fallow.md`.
 
-## High-Priority Findings
+## High-Priority Findings and Detailed Suggested Changes
 
-### 1. Cross-schema relationship filtering is incorrect
+### 1. React Flow attribution is hidden
+
+File: `src/components/SchemaGraphCanvas.tsx`
+
+Current code:
+
+```tsx
+proOptions={{ hideAttribution: true }}
+```
+
+This hides React Flow attribution. Under the free `@xyflow/react` license, this is not allowed unless the project has a paid Pro entitlement.
+
+#### Suggested change
+
+Remove the prop entirely:
+
+```tsx
+<ReactFlow
+  defaultNodes={[]}
+  defaultEdges={[]}
+  defaultEdgeOptions={{
+    type: 'default',
+    animated: false,
+    deletable: false,
+  }}
+  nodeTypes={nodeTypes}
+  edgeTypes={edgeTypes}
+  fitView
+  minZoom={0.2}
+  maxZoom={2}
+  onlyRenderVisibleElements
+  onSelectionChange={handleSelectionChange}
+>
+```
+
+#### Validation
+
+Run:
+
+```sh
+npx tsc --noEmit
+npm run build
+```
+
+#### Risk
+
+Low. Visual output changes only by restoring the attribution badge.
+
+---
+
+### 2. Cross-schema relationship filtering is incorrect
 
 File: `src/app/page.tsx`
 
-`filteredSchema` only keeps relationships whose `sourceTable` belongs to the selected schema:
+Current issue:
 
 ```ts
 relationships: schema.relationships.filter(
@@ -45,26 +125,31 @@ relationships: schema.relationships.filter(
 ),
 ```
 
-This drops relationships where the selected schema contains the target table but the source table is in another schema. That is a correctness bug for multi-schema Supabase/PostgreSQL projects.
+This only preserves relationships whose source table is in the selected schema. Relationships where the selected schema contains the target table but not the source are dropped.
 
-Recommended fix:
+#### Minimal suggested change
 
-- Keep relationships where either endpoint is in the selected schema.
-- Ideally include schema information directly in `ParsedRelationship` so same-named tables across schemas do not collide.
+Add endpoint checks for both source and target tables:
 
-### 2. Relationship model omits source/target schema names
+```ts
+const filteredSchema = useMemo(() => {
+  if (!selectedSchema) return schema
 
-File: `src/lib/types.ts`, `src/lib/parseSql.ts`, `src/lib/graph.ts`
+  const tableInSelectedSchema = (tableName: string) =>
+    schema.tables.some((t) => t.name === tableName && t.schema === selectedSchema)
 
-`ParsedRelationship` stores only `sourceTable`, `sourceColumn`, `targetTable`, and `targetColumn`. It does not store source or target schema names, even though `parseSql.ts` extracts reference schema information in `getInlineReference` and `getTableLevelReference`.
+  return {
+    tables: schema.tables.filter((t) => t.schema === selectedSchema),
+    relationships: schema.relationships.filter(
+      (r) => tableInSelectedSchema(r.sourceTable) || tableInSelectedSchema(r.targetTable)
+    ),
+  }
+}, [schema, selectedSchema])
+```
 
-Consequences:
+#### Better long-term change
 
-- Tables with the same name in different schemas can collide.
-- Cross-schema edge labels and synthetic nodes are unreliable.
-- Page-level schema filtering has to infer relationship membership from table names.
-
-Recommended fix:
+Extend `ParsedRelationship` to include schemas and filter directly:
 
 ```ts
 export type ParsedRelationship = {
@@ -79,66 +164,269 @@ export type ParsedRelationship = {
 }
 ```
 
-Then update graph node IDs to be schema-qualified, e.g. `${schema}.${table}`.
+Then:
 
-### 3. React Flow attribution is hidden
-
-File: `src/components/SchemaGraphCanvas.tsx`
-
-```tsx
-proOptions={{ hideAttribution: true }}
+```ts
+relationships: schema.relationships.filter(
+  (r) => r.sourceSchema === selectedSchema || r.targetSchema === selectedSchema
+)
 ```
 
-This hides React Flow attribution. Under the free `@xyflow/react` license, hiding attribution is not allowed unless the project has a paid Pro entitlement.
+#### Validation
 
-Recommended fix:
+Add a parser/graph fixture with a FK from `auth.users` to `public.profiles`, then verify selecting either schema still shows the relevant relationship.
 
-- Remove `proOptions={{ hideAttribution: true }}`, or
-- Document and verify React Flow Pro licensing before shipping.
+---
 
-### 4. PostgreSQL AST parsing is fragile and under-tested
+### 3. Relationship model omits source/target schema names
+
+Files:
+
+- `src/lib/types.ts`
+- `src/lib/parseSql.ts`
+- `src/lib/graph.ts`
+- `src/app/page.tsx`
+
+`ParsedRelationship` stores table names but not schemas. This causes correctness issues for:
+
+- Cross-schema relationships.
+- Same table name in multiple schemas.
+- Synthetic foreign node labels.
+- Schema filtering.
+
+#### Suggested type change
+
+Update `src/lib/types.ts`:
+
+```ts
+export type ParsedRelationship = {
+  id: string
+  constraintName: string
+  sourceSchema: string
+  sourceTable: string
+  sourceColumn: string
+  targetSchema: string
+  targetTable: string
+  targetColumn: string
+}
+```
+
+#### Suggested parser changes
+
+When building inline relationships in `src/lib/parseSql.ts`, include source and target schema:
+
+```ts
+relationships.push({
+  id: `${schema}.${table}.${colName}->${inlineRef.schema}.${inlineRef.table}.${inlineRef.columns[0]}_${nextRelId()}`,
+  constraintName: `${table}_${colName}_fkey`,
+  sourceSchema: schema,
+  sourceTable: table,
+  sourceColumn: colName,
+  targetSchema: inlineRef.schema,
+  targetTable: inlineRef.table,
+  targetColumn: inlineRef.columns[0],
+})
+```
+
+For table-level and `ALTER TABLE` relationships, include:
+
+```ts
+sourceSchema: schema,
+targetSchema: refInfo.schema,
+```
+
+#### Suggested graph changes
+
+Use schema-qualified node IDs to avoid collisions:
+
+```ts
+const getTableId = (schema: string, table: string) => `${schema}.${table}`
+```
+
+Build maps with schema-qualified keys:
+
+```ts
+const tableById = new Map<string, ParsedTable>()
+const columnIdByTableId = new Map<string, Map<string, string>>()
+
+for (const table of tables) {
+  const tableId = getTableId(table.schema, table.name)
+  tableById.set(tableId, table)
+  const colMap = new Map<string, string>()
+  for (const col of table.columns) {
+    colMap.set(col.name, `${tableId}.${col.name}`)
+  }
+  columnIdByTableId.set(tableId, colMap)
+}
+```
+
+Node IDs should also be schema-qualified:
+
+```ts
+id: getTableId(table.schema, table.name)
+```
+
+For React Flow edge source/target:
+
+```ts
+const sourceTableId = getTableId(rel.sourceSchema, rel.sourceTable)
+const targetTableId = getTableId(rel.targetSchema, rel.targetTable)
+```
+
+#### Compatibility note
+
+This is a behavioral change. It may require updating `findTable` and table selection to pass schema-qualified IDs or to resolve table names through a helper.
+
+---
+
+### 4. `parseSql.ts` is fragile and under-tested
 
 File: `src/lib/parseSql.ts`
 
-`parseSql.ts` uses many `Record<string, any>` casts against `node-sql-parser` AST structures. This makes the app vulnerable to parser version changes and unhandled DDL shapes.
+The parser uses broad casts like `Record<string, any>`, and Fallow reports `parseSql` as the highest-risk function:
 
-Examples:
+- 194 lines
+- Cyclomatic complexity: 75
+- Cognitive complexity: 193
+- CRAP estimate: 5700.0
 
-- `extractColumnName`
-- `parseDataType`
-- `extractDefaultValue`
-- `getInlineReference`
-- `getTableLevelReference`
-- main `parseSql` loops
+#### Suggested testing setup
 
-This is especially risky because there are no tests.
+Add a lightweight test runner. Since the project already has TypeScript and `tsx`, either of these approaches is reasonable:
 
-Recommended fix:
+Option A — Vitest:
 
-- Add fixture-based parser tests for common Supabase/PostgreSQL DDL.
-- Introduce narrow AST helper types and type guards instead of broad `any` casts.
-- Lock down behavior for inline FKs, table-level FKs, `ALTER TABLE`, defaults, identity columns, nullable columns, and schema-qualified names.
+```sh
+npm i -D vitest
+```
+
+`package.json`:
+
+```json
+"test": "vitest run"
+```
+
+Option B — Node test runner with `tsx`:
+
+```json
+"test": "tsx --test src/**/*.test.ts"
+```
+
+Vitest is more ergonomic for fixtures and assertions, so it is the preferred option.
+
+#### Suggested first tests
+
+Create `src/lib/parseSql.test.ts` with fixtures for:
+
+1. Empty input.
+2. Basic `CREATE TABLE public.users`.
+3. Inline primary key.
+4. Table-level primary key.
+5. Inline foreign key.
+6. Table-level foreign key.
+7. `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`.
+8. Nullable default behavior.
+9. Defaults: string, boolean, number, function-like values.
+10. Identity/serial columns.
+11. Schema-qualified references.
+12. Same table name in multiple schemas.
+
+Example test shape:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { parseSql } from './parseSql'
+
+describe('parseSql', () => {
+  it('parses schema-qualified foreign keys', () => {
+    const schema = parseSql(`
+      create table auth.users (
+        id uuid primary key
+      );
+
+      create table public.profiles (
+        id uuid primary key references auth.users(id)
+      );
+    `)
+
+    expect(schema.tables).toHaveLength(2)
+    expect(schema.relationships).toMatchObject([
+      {
+        sourceSchema: 'public',
+        sourceTable: 'profiles',
+        sourceColumn: 'id',
+        targetSchema: 'auth',
+        targetTable: 'users',
+        targetColumn: 'id',
+      },
+    ])
+  })
+})
+```
+
+#### Suggested parser refactor after tests
+
+After tests exist, split `parseSql` into smaller helpers:
+
+- `parseStatements(sql: string): unknown[]`
+- `parseCreateTableStatement(stmt): ParsedTable | null`
+- `collectTableConstraints(createDefs): { pkColumns; uniqueColumns }`
+- `parseColumnDefinition(def, constraintContext): ParsedColumn | null`
+- `buildInlineRelationship(...)`
+- `buildForeignKeyRelationshipsFromConstraint(...)`
+- `parseCreateTableForeignKeys(stmt)`
+- `parseAlterTableForeignKeys(stmt)`
+
+This directly addresses Fallow duplication and complexity findings.
+
+---
 
 ### 5. `isNotNull` default behavior is inconsistent
 
 File: `src/lib/parseSql.ts`
+
+Current code:
 
 ```ts
 function isNotNull(definition: unknown): boolean {
   if (!definition || typeof definition !== 'object') return true // default to not null? Actually default is nullable unless specified. Keep false.
 ```
 
-The comment says PostgreSQL columns are nullable by default, but the function returns `true` for invalid/non-object definitions, which means “not null”.
+PostgreSQL columns are nullable unless `NOT NULL` is specified.
 
-Recommended fix:
+#### Suggested change
 
 ```ts
-if (!definition || typeof definition !== 'object') return false
+function isNotNull(definition: unknown): boolean {
+  if (!definition || typeof definition !== 'object') return false
+  const def = definition as Record<string, any>
+  const nullable = def.nullable
+  if (!nullable) return false
+  if (typeof nullable === 'object') {
+    const val = String(nullable.value ?? nullable.type ?? '').toLowerCase()
+    return val === 'not null' || val === 'notnull'
+  }
+  return String(nullable).toLowerCase() === 'not null'
+}
 ```
 
-This aligns with PostgreSQL’s default nullable behavior.
+#### Add tests
 
-## Medium-Priority Findings
+```ts
+it('treats columns as nullable by default', () => {
+  const schema = parseSql('create table public.todos (title text);')
+  expect(schema.tables[0].columns[0].isNullable).toBe(true)
+})
+
+it('recognizes not null columns', () => {
+  const schema = parseSql('create table public.todos (title text not null);')
+  expect(schema.tables[0].columns[0].isNullable).toBe(false)
+})
+```
+
+---
+
+## Medium-Priority Findings and Detailed Suggested Changes
 
 ### 6. Duplicate SQL serialization logic
 
@@ -147,12 +435,29 @@ Files:
 - `src/components/SchemaGraphCanvas.tsx`
 - `src/lib/utils.ts`
 
-`SchemaGraphCanvas.tsx` has an inline `copyAsSQL` implementation while `src/lib/utils.ts` already exports `tablesToSQL`. The two differ: `tablesToSQL` includes `DEFAULT` and `GENERATED ALWAYS AS IDENTITY`; the canvas copy path omits them.
+`SchemaGraphCanvas.tsx` duplicates SQL serialization despite `src/lib/utils.ts` exporting `tablesToSQL`.
 
-Recommended fix:
+#### Suggested change
 
-- Replace the inline canvas serializer with `tablesToSQL(tables)`.
-- Keep SQL export behavior in one place.
+Update import:
+
+```ts
+import { copyToClipboard, getSchemaAsMarkdown, tablesToSQL } from '@/lib/utils'
+```
+
+Replace `copyAsSQL` with:
+
+```ts
+const copyAsSQL = useCallback(() => {
+  copyToClipboard(tablesToSQL(tables), () => toast.success('Schema SQL copied to clipboard'))
+}, [tables])
+```
+
+#### Behavior change
+
+Copied SQL will include `DEFAULT` and `GENERATED ALWAYS AS IDENTITY` because `tablesToSQL` already includes them.
+
+---
 
 ### 7. Duplicate table node constants
 
@@ -161,198 +466,515 @@ Files:
 - `src/lib/graph.ts`
 - `src/components/TableNode.tsx`
 
-Both define:
+#### Suggested change
+
+Create `src/lib/constants.ts`:
 
 ```ts
-TABLE_NODE_WIDTH = 320
-TABLE_NODE_ROW_HEIGHT = 40
+export const TABLE_NODE_WIDTH = 320
+export const TABLE_NODE_ROW_HEIGHT = 40
 ```
 
-`TABLE_NODE_ROW_HEIGHT` in `TableNode.tsx` is not used.
+Update `src/lib/graph.ts`:
 
-Recommended fix:
+```ts
+import { TABLE_NODE_ROW_HEIGHT, TABLE_NODE_WIDTH } from './constants'
+```
 
-- Create `src/lib/constants.ts` for shared layout constants.
-- Import `TABLE_NODE_WIDTH` into `TableNode.tsx`.
-- Import both constants into `graph.ts`.
+Remove these exports from `graph.ts`:
+
+```ts
+export const TABLE_NODE_WIDTH = 320
+export const TABLE_NODE_ROW_HEIGHT = 40
+```
+
+Update `src/components/TableNode.tsx`:
+
+```ts
+import { TABLE_NODE_WIDTH } from '@/lib/constants'
+```
+
+Remove local constants from `TableNode.tsx`.
+
+#### Validation
+
+Run:
+
+```sh
+npx fallow dead-code
+npx tsc --noEmit
+npm run build
+```
+
+---
 
 ### 8. Duplicate reference helper functions
 
 File: `src/lib/parseSql.ts`
 
-`getInlineReference` and `getTableLevelReference` are effectively identical. This creates maintenance drift risk.
+`getInlineReference` and `getTableLevelReference` are identical.
 
-Recommended fix:
+#### Suggested change
 
-- Replace both with a single `getReferenceInfo` helper.
+Replace both with:
 
-### 9. Synthetic foreign nodes use confusing labels
+```ts
+function getReferenceInfo(definition: unknown): { schema: string; table: string; columns: string[] } | null {
+  if (!definition || typeof definition !== 'object') return null
+  const def = definition as Record<string, any>
+  const ref = def.reference_definition
+  if (!ref) return null
+
+  const tableArr = Array.isArray(ref.table) ? ref.table : ref.table ? [ref.table] : []
+  const tableInfo = tableArr[0]
+  if (!tableInfo) return null
+
+  const schemaName = typeof tableInfo.db === 'string' ? normalizeIdentifier(tableInfo.db) : 'public'
+  const tableName = typeof tableInfo.table === 'string' ? normalizeIdentifier(tableInfo.table) : ''
+  const columns = Array.isArray(ref.definition)
+    ? ref.definition.map((col: unknown) => extractColumnName(col)).filter(Boolean)
+    : []
+
+  return { schema: schemaName, table: tableName, columns }
+}
+```
+
+Then replace calls:
+
+```ts
+const inlineRef = getReferenceInfo(def)
+const refInfo = getReferenceInfo(def)
+const refInfo = getReferenceInfo(constraint)
+```
+
+---
+
+### 9. Synthetic foreign node labels are confusing
 
 File: `src/lib/graph.ts`
 
-When a target table is not present, the graph creates a synthetic node:
+Current synthetic node data guesses schema with `rel.targetTable`.
+
+#### Suggested change after relationship schemas exist
 
 ```ts
-schema: rel.targetTable,
-name: targetId,
+const targetTableId = getTableId(rel.targetSchema, rel.targetTable)
+
+nodes.push({
+  id: targetTableId,
+  type: 'table',
+  data: {
+    id: targetTableId,
+    schema: rel.targetSchema,
+    name: rel.targetTable,
+    comment: null,
+    isForeign: true,
+    columns: [],
+  },
+  position: { x: 0, y: 0 },
+})
 ```
 
-This can produce confusing labels like `users.users.user_id` because schema information is guessed from the table name.
+For an edge label:
 
-Recommended fix:
+```ts
+data: {
+  sourceName: rel.sourceTable,
+  sourceSchemaName: rel.sourceSchema,
+  sourceColumnName: rel.sourceColumn,
+  targetName: rel.targetTable,
+  targetSchemaName: rel.targetSchema,
+  targetColumnName: rel.targetColumn,
+}
+```
 
-- Store relationship schema names in `ParsedRelationship`.
-- Use the real `targetSchema` when available.
-- If unavailable, render a clear placeholder rather than reusing the table name as schema.
+---
 
 ### 10. `handleLoadExample` uses unnecessary `setTimeout`
 
 File: `src/app/page.tsx`
 
-The example loader calls `setSql(SAMPLE_SCHEMA)` and then parses `SAMPLE_SCHEMA` inside `setTimeout(..., 0)`. The parse does not depend on React state being flushed, so the timeout is unnecessary.
+#### Suggested change
 
-Recommended fix:
+```ts
+const handleLoadExample = () => {
+  setSql(SAMPLE_SCHEMA)
+  setError(null)
 
-- Parse synchronously using `SAMPLE_SCHEMA`.
-- Remove the misleading comment.
+  try {
+    const parsed = parseSql(SAMPLE_SCHEMA)
+    setSchema(parsed)
+    const names = Array.from(new Set(parsed.tables.map((t) => t.schema))).sort()
+    setSelectedSchema(names[0] ?? '')
+    toast.success(`Loaded example schema: ${parsed.tables.length} tables`)
+  } catch (err) {
+    const message = formatParseError(err)
+    setError(message)
+    toast.error('Failed to parse example schema')
+  }
+}
+```
 
-### 11. `copyToClipboard` silently fails in the UI
+---
+
+### 11. Clipboard failures are silent
 
 File: `src/lib/utils.ts`
 
-`copyToClipboard` logs failures but does not expose the error to callers. Users see no toast if clipboard permissions fail.
+#### Suggested change
 
-Recommended fix:
+Return a success boolean:
 
-- Return `boolean` or throw on failure.
-- Show an error toast at call sites.
+```ts
+export async function copyToClipboard(text: string, onSuccess?: () => void): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    onSuccess?.()
+    return true
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    return false
+  }
+}
+```
 
-### 12. Export-to-image implementation may be brittle
+At call sites that need user feedback:
+
+```ts
+const ok = await copyToClipboard(text, () => toast.success('Copied'))
+if (!ok) toast.error('Failed to copy to clipboard')
+```
+
+Because existing call sites are synchronous event handlers, either make them `async` or keep the helper’s current fire-and-forget style and add an optional `onError` callback:
+
+```ts
+export async function copyToClipboard(
+  text: string,
+  onSuccess?: () => void,
+  onError?: (error: unknown) => void
+) {
+  try {
+    await navigator.clipboard.writeText(text)
+    onSuccess?.()
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    onError?.(err)
+  }
+}
+```
+
+---
+
+### 12. Export-to-image implementation needs verification
 
 File: `src/components/useExportSchemaToImage.ts`
 
-The export logic serializes `.react-flow__viewport` and applies the current transform. Potential issues:
+#### Suggested changes
 
-- PNG/SVG output may reflect current zoom/pan in a way that is hard to predict.
-- Large schemas may export at poor resolution.
-- `includeStyleProperties` should be verified against the installed `html-to-image` version.
-- `skipFonts: true` may produce visual differences from the app.
+1. Verify the installed `html-to-image` options against its package docs/types.
+2. Add a manual QA checklist for PNG/SVG export:
+   - Light mode.
+   - Dark mode.
+   - Zoomed in.
+   - Zoomed out.
+   - Panned canvas.
+   - Large schema.
+3. Consider exporting from a normalized off-screen graph rather than the live `.react-flow__viewport`.
 
-Recommended fix:
+#### Safer short-term improvement
 
-- Add manual test coverage for export behavior.
-- Consider exporting an off-screen normalized graph rather than the live viewport.
+Add explicit failure context:
 
-## Low-Priority Findings / Cleanup
+```ts
+const message = error instanceof Error ? error.message : 'Unknown export error'
+toast.error(`Failed to download ${format.toUpperCase()}: ${message}`)
+```
 
-### 13. Unused type
+---
+
+## Low-Priority Cleanup and Detailed Suggested Changes
+
+### 13. Remove unused `ToolbarAction`
 
 File: `src/lib/types.ts`
 
-`ToolbarAction` appears unused.
+Remove:
 
-Recommended fix:
+```ts
+export type ToolbarAction =
+  | 'copy-sql'
+  | 'copy-markdown'
+  | 'download-png'
+  | 'download-svg'
+  | 'auto-layout'
+  | 'find-table'
+  | 'reset-sql'
+  | 'load-example'
+```
 
-- Remove it unless planned for imminent use.
+### 14. Replace boilerplate README
 
-### 14. Public assets and README are boilerplate
+File: `README.md`
 
-Files:
+Suggested contents:
 
-- `README.md`
+- What the app does.
+- Supported stack and commands.
+- Supported SQL features.
+- Known limitations.
+- Development workflow.
+- Link to `AUDIT.md`, `fallow.md`, and `gpt5.5-report.md`.
+
+This has been updated in this pass.
+
+### 15. Remove unused public assets
+
+Files likely removable if unreferenced:
+
 - `public/file.svg`
 - `public/globe.svg`
 - `public/next.svg`
 - `public/vercel.svg`
 - `public/window.svg`
 
-These appear to be default create-next-app leftovers and do not describe the schema visualizer.
+Before deletion, confirm with:
 
-Recommended fix:
+```sh
+grep -R "file.svg\|globe.svg\|next.svg\|vercel.svg\|window.svg" -n src public README.md
+```
 
-- Rewrite `README.md` with app purpose, setup, supported SQL subset, limitations, and commands.
-- Delete unused public SVGs if they are not referenced.
-
-### 15. Styling duplication in toolbar
+### 16. Extract toolbar button styling
 
 File: `src/components/Toolbar.tsx`
 
-The button class string is repeated several times.
+Suggested local constant:
 
-Recommended fix:
+```ts
+const toolbarButtonClass =
+  'flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+```
 
-- Extract a local `toolbarButtonClass` constant or a small `ToolbarButton` component.
+Then use:
 
-### 16. `Toaster` placement is page-local
+```tsx
+className={toolbarButtonClass}
+```
+
+A reusable `ToolbarButton` component is also reasonable, but a constant is enough for now.
+
+### 17. Move `Toaster` only if the app grows
 
 File: `src/app/page.tsx`
 
-`Toaster` is mounted inside the page. This is acceptable for the current single-page app, but if the app grows to multiple routes, `Toaster` should move to `src/app/layout.tsx`.
+The current placement works for a single page. If more routes are added, move:
 
-### 17. No error boundary
+```tsx
+<Toaster position="top-center" richColors />
+```
 
-Rendering errors inside the graph/tree would currently take down the full page.
+to `src/app/layout.tsx`.
 
-Recommended fix:
+### 18. Add error boundary
 
-- Add an App Router `error.tsx`, or
-- Add a component-level error boundary around the graph canvas.
+Suggested App Router file: `src/app/error.tsx`
 
-## Tooling Gaps
+```tsx
+'use client'
 
-### Missing scripts
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <main className="flex h-screen flex-col items-center justify-center gap-3 p-6 text-center">
+      <h1 className="text-lg font-semibold">Something went wrong</h1>
+      <p className="max-w-lg text-sm text-zinc-500">{error.message}</p>
+      <button
+        type="button"
+        onClick={reset}
+        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      >
+        Try again
+      </button>
+    </main>
+  )
+}
+```
 
-`package.json` has:
+## Tooling Suggested Changes
+
+### Add typecheck script
+
+File: `package.json`
 
 ```json
 "scripts": {
   "dev": "next dev",
   "build": "next build",
-  "start": "next start"
+  "start": "next start",
+  "typecheck": "tsc --noEmit"
 }
 ```
 
-Recommended additions:
+### Add ESLint for Next.js 16
+
+Install:
+
+```sh
+npm i -D eslint eslint-config-next
+```
+
+Add script:
 
 ```json
-"typecheck": "tsc --noEmit",
 "lint": "eslint ."
 ```
 
-For Next.js 16, do not use `next lint`; use ESLint CLI with `eslint-config-next` flat config.
+Create `eslint.config.mjs`:
 
-### Missing tests
+```js
+import { defineConfig, globalIgnores } from 'eslint/config'
+import nextVitals from 'eslint-config-next/core-web-vitals'
+import nextTs from 'eslint-config-next/typescript'
 
-The parser is the best first testing target.
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+  ]),
+])
 
-Recommended test coverage:
+export default eslintConfig
+```
 
-- Empty input returns no tables.
-- Basic `CREATE TABLE`.
-- Schema-qualified `CREATE TABLE`.
-- Inline primary key.
-- Table-level primary key.
-- Inline foreign key.
-- Table-level foreign key.
-- `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`.
-- Nullable/default behavior.
-- Identity/serial columns.
-- Multiple schemas and same table names in different schemas.
+Do not use `next lint`; it is removed in Next.js 16.
 
-## Suggested Prioritized Fix Plan
+### Add parser tests
 
-1. Remove or justify React Flow `hideAttribution`.
-2. Add `typecheck` script and ESLint flat config for Next.js 16.
-3. Add parser regression tests before large parser refactors.
-4. Extend `ParsedRelationship` to include `sourceSchema` and `targetSchema`.
-5. Use schema-qualified node IDs in graph generation.
-6. Fix selected-schema relationship filtering.
-7. Fix `isNotNull` default return.
-8. Deduplicate SQL serialization by using `tablesToSQL` in `SchemaGraphCanvas.tsx`.
-9. Deduplicate graph/table node constants.
-10. Merge duplicate reference helper functions in `parseSql.ts`.
-11. Rewrite `README.md` and remove boilerplate public assets.
+Preferred:
+
+```sh
+npm i -D vitest
+```
+
+`package.json`:
+
+```json
+"test": "vitest run"
+```
+
+Optional watch script:
+
+```json
+"test:watch": "vitest"
+```
+
+## Suggested Implementation Phases
+
+### Phase 0 — Compliance and docs
+
+Goal: reduce immediate non-code risk.
+
+1. Remove React Flow `hideAttribution`.
+2. Replace boilerplate README.
+3. Add `typecheck` script.
+
+Validation:
+
+```sh
+npm run typecheck
+npm run build
+```
+
+### Phase 1 — Safe Fallow cleanup
+
+Goal: reduce dead exports and duplication without changing parser behavior.
+
+1. Create `src/lib/constants.ts`.
+2. Move table constants there.
+3. Make `SchemaGraphCanvas.tsx` use `tablesToSQL`.
+4. Remove `ToolbarAction`.
+5. Remove internal-only exports.
+6. Extract toolbar button class constant.
+
+Validation:
+
+```sh
+npx fallow dead-code
+npx tsc --noEmit
+npm run build
+```
+
+### Phase 2 — Testing foundation
+
+Goal: protect parser behavior before refactor.
+
+1. Add Vitest.
+2. Add parser fixture tests.
+3. Add tests for nullable/default/identity/FK behavior.
+4. Add multi-schema FK tests.
+
+Validation:
+
+```sh
+npm run test
+npm run typecheck
+npm run build
+```
+
+### Phase 3 — Schema-qualified relationships
+
+Goal: fix the biggest correctness issue.
+
+1. Add `sourceSchema` and `targetSchema` to `ParsedRelationship`.
+2. Update all relationship builders in `parseSql.ts`.
+3. Use schema-qualified table IDs in `graph.ts`.
+4. Update `page.tsx` relationship filtering.
+5. Update `findTable` to handle schema-qualified IDs.
+6. Fix synthetic foreign node labels.
+
+Validation:
+
+```sh
+npm run test
+npm run typecheck
+npm run build
+```
+
+Manual validation:
+
+- Render sample schema.
+- Render schema with `auth.users` referenced by `public.profiles`.
+- Select each schema and verify relationships remain visible where expected.
+
+### Phase 4 — Parser refactor
+
+Goal: reduce Fallow complexity findings.
+
+1. Merge `getInlineReference` and `getTableLevelReference`.
+2. Extract FK relationship builder.
+3. Split `parseSql` into statement-specific helpers.
+4. Replace `Record<string, any>` with helper type guards where practical.
+
+Validation:
+
+```sh
+npm run test
+npx fallow health
+npm run build
+```
+
+### Phase 5 — UX hardening
+
+Goal: improve production polish.
+
+1. Add `src/app/error.tsx`.
+2. Improve clipboard error reporting.
+3. Improve export-to-image error messages.
+4. Document export limitations.
+5. Remove unused public assets.
 
 ## Overall Assessment
 
-The codebase is small, readable, and currently passes type checking and production build. The main technical debt is not general architecture; it is correctness and confidence around PostgreSQL parsing and multi-schema relationship modeling. Addressing schema-qualified relationships and adding parser tests would substantially improve reliability. The React Flow attribution issue should be handled before any public deployment.
+The codebase is in a good state for a small prototype and currently passes type checking and production build. The next best improvements are not broad rewrites; they are targeted correctness and confidence work. Remove the React Flow attribution override first, then take the Fallow cleanup wins, then add parser tests before changing the relationship model and parser internals.
