@@ -43,4 +43,4 @@ CREATE TABLE app.comments (
 );
 
 CREATE INDEX idx_comments_post_id ON app.comments(post_id);
-`
+`;

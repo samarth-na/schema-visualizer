@@ -8,7 +8,13 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --write",
+    "format": "biome format .",
+    "format:fix": "biome format . --write",
+    "check": "biome check .",
+    "check:fix": "biome check . --write"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
@@ -24,6 +30,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -1,18 +1,18 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-import type { ParsedTable } from './types'
+import type { ParsedTable } from './types';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export async function copyToClipboard(text: string, onSuccess?: () => void) {
   try {
-    await navigator.clipboard.writeText(text)
-    onSuccess?.()
+    await navigator.clipboard.writeText(text);
+    onSuccess?.();
   } catch (err) {
-    console.error('Failed to copy:', err)
+    console.error('Failed to copy:', err);
   }
 }
 
@@ -20,28 +20,28 @@ function escapeForMarkdown(str: string) {
   return str
     .replace(/\\/g, '\\\\')
     .replace(/([|`])/g, '\\$1')
-    .replace(/\n/g, ' ')
+    .replace(/\n/g, ' ');
 }
 
 function getTableDefinitionAsMarkdown(table: {
-  name: string
-  comment: string | null
+  name: string;
+  comment: string | null;
   columns: {
-    name: string
-    format: string
-    isPrimary: boolean
-    isNullable: boolean
-    isUnique: boolean
-    isIdentity: boolean
-  }[]
+    name: string;
+    format: string;
+    isPrimary: boolean;
+    isNullable: boolean;
+    isUnique: boolean;
+    isIdentity: boolean;
+  }[];
 }) {
-  let markdown = `## Table \`${escapeForMarkdown(table.name)}\`\n\n`
+  let markdown = `## Table \`${escapeForMarkdown(table.name)}\`\n\n`;
   if (table.comment) {
-    markdown += `${table.comment}\n\n`
+    markdown += `${table.comment}\n\n`;
   }
-  markdown += `### Columns\n\n`
-  markdown += `| Name | Type | Constraints |\n`
-  markdown += `|------|------|-------------|\n`
+  markdown += `### Columns\n\n`;
+  markdown += `| Name | Type | Constraints |\n`;
+  markdown += `|------|------|-------------|\n`;
 
   return table.columns.reduce((current, column) => {
     const constraints = [
@@ -51,34 +51,34 @@ function getTableDefinitionAsMarkdown(table: {
       column.isIdentity ? 'Identity' : '',
     ]
       .filter(Boolean)
-      .join(' ')
-    current += `| \`${escapeForMarkdown(column.name)}\` | \`${escapeForMarkdown(column.format)}\` | ${constraints} |\n`
-    return current
-  }, markdown)
+      .join(' ');
+    current += `| \`${escapeForMarkdown(column.name)}\` | \`${escapeForMarkdown(column.format)}\` | ${constraints} |\n`;
+    return current;
+  }, markdown);
 }
 
 export function getSchemaAsMarkdown(
   schema: string,
   tables: {
-    schema: string
-    name: string
-    comment: string | null
+    schema: string;
+    name: string;
+    comment: string | null;
     columns: {
-      name: string
-      format: string
-      isPrimary: boolean
-      isNullable: boolean
-      isUnique: boolean
-      isIdentity: boolean
-    }[]
+      name: string;
+      format: string;
+      isPrimary: boolean;
+      isNullable: boolean;
+      isUnique: boolean;
+      isIdentity: boolean;
+    }[];
   }[]
 ) {
   return tables
-    .filter((t) => t.schema === schema)
+    .filter((t) => !schema || t.schema === schema)
     .reduce((current, table) => {
-      current += `${getTableDefinitionAsMarkdown(table)}\n`
-      return current
-    }, '')
+      current += `${getTableDefinitionAsMarkdown(table)}\n`;
+      return current;
+    }, '');
 }
 
 export function tablesToSQL(tables: ParsedTable[]) {
@@ -95,12 +95,11 @@ export function tablesToSQL(tables: ParsedTable[]) {
             col.defaultValue ? `DEFAULT ${col.defaultValue}` : '',
           ]
             .filter(Boolean)
-            .join(' ')
-          return parts
+            .join(' ');
+          return parts;
         })
-        .join(',\n')
-      return `CREATE TABLE ${table.schema}.${table.name} (\n${cols}\n);`
+        .join(',\n');
+      return `CREATE TABLE ${table.schema}.${table.name} (\n${cols}\n);`;
     })
-    .join('\n\n')
+    .join('\n\n');
 }
-

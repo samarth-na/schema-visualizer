@@ -5,14 +5,16 @@ Related docs: `gpt5.5-report.md`, `AUDIT.md`, `fallow.md`, `PHASE1_PLAN.md`, `te
 
 ## Short Answer: Start Here
 
-**Phase 0** and **Phase 1** are complete. Start with **Phase 2** next.
+**Phase 0**, **Phase 1**, **Phase 2**, and **Phase 3** are complete. Start with **Phase 4** next.
 
-Completed first PR/change set:
+Completed change sets:
 
 1. Removed React Flow `hideAttribution` and CSS override.
 2. Added `typecheck` script.
 3. Applied safe Fallow cleanup from `PHASE1_PLAN.md`.
-4. All validations pass (`npm run build`, `npm run typecheck`, `npx fallow dead-code`).
+4. Added Vitest, parser/utility/graph/component tests, and `isNotNull` fix.
+5. Extended `ParsedRelationship` with schema fields, updated parser builders, schema filtering, schema-qualified graph IDs, and synthetic foreign nodes.
+6. All validations pass (`npm run test`, `npm run typecheck`, `npm run build`, `npx fallow dead-code`).
 
 Do **not** refactor `parseSql.ts` before Phase 2 tests exist.
 
@@ -22,9 +24,9 @@ Do **not** refactor `parseSql.ts` before Phase 2 tests exist.
 |:---|---:|---:|:---|---|
 | 0 | Compliance + validation baseline | Low | ✅ Done | `AUDIT.md` §4 Correctness / Bugs; `gpt5.5-report.md` §High-Priority Findings |
 | 1 | Safe Fallow cleanup | Low | ✅ Done | `PHASE1_PLAN.md` §Code Changes; `fallow.md` §Dead Code Findings; `AUDIT.md` §2 Bloat / Dead Code |
-| 2 | Parser test foundation | Medium | ⬜ Next | `test.md` §Priority 1 — Parser Tests; `AUDIT.md` §1 Cleanliness, §4 Correctness / Bugs |
-| 3 | Multi-schema correctness | Medium/High | ⬜ | `gpt5.5-report.md` §Cross-schema relationship filtering; `AUDIT.md` §4 Correctness / Bugs |
-| 4 | Parser and graph refactor | Medium | ⬜ | `fallow.md` §Duplication Findings, §Health Findings; `test.md` §Priority 1–3 |
+| 2 | Parser test foundation | Medium | ✅ Done | `test.md` §Priority 1 — Parser Tests; `AUDIT.md` §1 Cleanliness, §4 Correctness / Bugs |
+| 3 | Multi-schema correctness | Medium/High | ✅ Done | `gpt5.5-report.md` §Cross-schema relationship filtering; `AUDIT.md` §4 Correctness / Bugs |
+| 4 | Parser and graph refactor | Medium | ⬜ Next | `fallow.md` §Duplication Findings, §Health Findings; `test.md` §Priority 1–3 |
 | 5 | UX hardening + docs/assets | Low/Medium | ⬜ | `gpt5.5-report.md` §Low-Priority Cleanup; `AUDIT.md` §6 Documentation / Assets |
 
 ---
@@ -257,9 +259,140 @@ npm run build
 - Existing behavior is documented by tests.
 - Known failing tests for future schema-qualified relationships are either skipped with clear TODOs or added during Phase 3.
 
+### Completed Work
+
+- Vitest 4.1.9 installed as a devDependency.
+- `test` and `test:watch` scripts added to `package.json`.
+- `vitest.config.ts` created with `@vitejs/plugin-react`, jsdom environment, `@/` alias, and `src/test/setup.ts` setup file.
+- `src/test/setup.ts` registers `@testing-library/jest-dom`.
+- `src/lib/parseSql.test.ts` contains 20 tests covering all cases from §Priority 1.
+- `src/lib/utils.test.ts` covers `cn`, `getSchemaAsMarkdown`, and `tablesToSQL`.
+- `src/lib/graph.test.ts` covers empty/single-table/FK cases, synthetic foreign nodes, dedup, schema-qualified IDs, and dagre layout.
+- `src/app/page.test.tsx` and `src/components/__tests__/` cover page interactions and component rendering.
+- `isNotNull` early-return bug fixed in `src/lib/parseSql.ts:53` (now returns `false`).
+- `npm run test` passes: 46 tests across 9 files.
+
 ---
 
 ## Phase 3 — Multi-Schema Correctness
+
+### Reference Docs
+
+Read these before starting Phase 3:
+
+- `gpt5.5-report.md` — §High-Priority Findings → `Cross-schema relationship filtering is incorrect`, `Relationship model omits source/target schema names`, and §Suggested Implementation Phases → Phase 3.
+- `AUDIT.md` — §4 Correctness / Bugs → `Cross-schema relationship filtering is incorrect`, `Relationship model omits schema names`, and `Synthetic foreign node labels are confusing`.
+- `test.md` — §Priority 1 — Parser Tests → `Cross-schema references` and `Same table name in different schemas`.
+- `fallow.md` — §Health Findings and §Highest-Complexity Functions, to avoid mixing broad parser/graph refactors into this correctness phase.
+
+### Goal
+
+Fix the most important correctness issue: schema-aware relationships and filtering.
+
+### Tasks
+
+#### 3.1 Extend relationship type
+
+File: `src/lib/types.ts`
+
+Change `ParsedRelationship` to include schemas:
+
+```ts
+export type ParsedRelationship = {
+  id: string
+  constraintName: string
+  sourceSchema: string
+  sourceTable: string
+  sourceColumn: string
+  targetSchema: string
+  targetTable: string
+  targetColumn: string
+}
+```
+
+#### 3.2 Update parser relationship builders
+
+File: `src/lib/parseSql.ts`
+
+Add `sourceSchema` and `targetSchema` in:
+
+- Inline FK relationships.
+- Table-level FK relationships.
+- `ALTER TABLE` FK relationships.
+
+#### 3.3 Fix selected-schema filtering
+
+File: `src/app/page.tsx`
+
+Use schema fields:
+
+```ts
+relationships: schema.relationships.filter(
+  (r) => r.sourceSchema === selectedSchema || r.targetSchema === selectedSchema
+)
+```
+
+If schema fields are not ready yet, use the minimal endpoint table lookup described in `AUDIT.md`.
+
+#### 3.4 Update graph IDs
+
+File: `src/lib/graph.ts`
+
+Use schema-qualified IDs:
+
+```ts
+const getTableId = (schema: string, table: string) => `${schema}.${table}`
+```
+
+Update:
+
+- Node IDs.
+- Column handle IDs.
+- Table lookup maps.
+- Edge `source` and `target`.
+- `findTable` behavior in `SchemaGraphCanvas.tsx` / `FindTableSelector.tsx` if needed.
+
+#### 3.5 Fix synthetic foreign nodes
+
+File: `src/lib/graph.ts`
+
+Use real `rel.targetSchema` and `rel.targetTable` instead of guessing schema from table name.
+
+### Validation
+
+```sh
+npm run test
+npm run typecheck
+npm run build
+```
+
+Manual checks:
+
+1. Render the built-in sample schema.
+2. Render schema with `auth.users` and `public.profiles` FK.
+3. Switch schema selection and verify relationships remain visible where expected.
+4. Render same table name in two schemas and confirm graph nodes do not collide.
+
+### Exit Criteria
+
+- Cross-schema FK tests pass.
+- Same-name tables in different schemas do not collide.
+- Schema filter keeps relationships when either endpoint belongs to selected schema.
+
+### Completed Work
+
+- `src/lib/types.ts` `ParsedRelationship` extended with `sourceSchema` and `targetSchema` (lines 15, 18).
+- `src/lib/parseSql.ts` sets schema fields in all three relationship builders (inline at lines 286, 289; table-level at lines 340, 343; `ALTER TABLE` at lines 386, 389).
+- `src/app/page.tsx:82` filters relationships by `r.sourceSchema === selectedSchema || r.targetSchema === selectedSchema`.
+- `src/lib/graph.ts` uses schema-qualified table keys throughout: node IDs (line 51), column handles (line 40), edge source/target (lines 72, 73), and lookup maps (lines 24, 28).
+- `src/lib/graph.ts:85-86` uses `rel.targetSchema` and `rel.targetTable` for synthetic foreign nodes instead of guessing the schema.
+- Cross-schema and same-name tests added to `parseSql.test.ts` (lines 241-291) and `graph.test.ts` (lines 50-73, 104-131).
+- Schema-filtering behavior asserted in `page.test.tsx:75-103`.
+- `npm run test` passes: 46 tests across 9 files.
+
+---
+
+## Phase 4 — Parser and Graph Refactor
 
 ### Reference Docs
 
@@ -564,22 +697,22 @@ If working in short daily sessions:
 - Finish Phase 1.
 - Re-run Fallow.
 
-### Day 3
+### Day 3 ✅
 
 - Install Vitest.
 - Add basic parser tests.
 
-### Day 4
+### Day 4 ✅
 
 - Add FK/default/identity/cross-schema parser tests.
 - Fix `isNotNull` once covered.
 
-### Day 5
+### Day 5 ✅
 
 - Add schema fields to `ParsedRelationship`.
 - Update parser and page filtering.
 
-### Day 6
+### Day 6 ✅
 
 - Update graph IDs and synthetic foreign nodes.
 - Manual multi-schema validation.
@@ -595,7 +728,7 @@ If working in short daily sessions:
 |:---|:---|---|
 | 0 | ✅ Done | Attribution restored, typecheck script added. |
 | 1 | ✅ Done | Constants centralized, internal exports removed, `tablesToSQL` in use, `ToolbarAction` deleted, toolbar class deduped. Fallow dead-code: 0 issues. |
-| 2 | ⬜ Not started | Detailed in `test.md`. |
-| 3 | ⬜ Not started | Depends on parser tests. |
-| 4 | ⬜ Not started | Depends on Phase 2/3. |
+| 2 | ✅ Done | Vitest installed; 46 tests across 9 files covering parser, utils, graph, page, and components. `isNotNull` fix landed. |
+| 3 | ✅ Done | `ParsedRelationship` carries `sourceSchema`/`targetSchema`; parser, page filter, graph IDs, and synthetic foreign nodes all schema-aware. |
+| 4 | ⬜ Not started | Next. Depends on Phase 2/3 tests staying green. |
 | 5 | ⬜ Not started | Can be partially parallel after Phase 1. |

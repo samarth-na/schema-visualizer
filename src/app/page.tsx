@@ -1,195 +1,242 @@
-"use client";
+import {
+  ArrowRight,
+  Database,
+  ImageDown,
+  Network,
+  Pointer,
+  Sparkles,
+  Workflow,
+} from 'lucide-react';
+import Link from 'next/link';
 
-import { ReactFlowProvider } from "@xyflow/react";
-import { Loader2, Sparkles, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Toaster, toast } from "sonner";
-
-import { SchemaGraphCanvas } from "@/components/SchemaGraphCanvas";
-import { cn } from "@/lib/utils";
-import { formatParseError, parseSql } from "@/lib/parseSql";
-import { SAMPLE_SCHEMA } from "@/lib/sampleSchema";
-import type { ParsedSchema } from "@/lib/types";
+import { SampleSchemaVisualizer } from '@/components/SampleSchemaVisualizer';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
-	const [sql, setSql] = useState("");
-	const [schema, setSchema] = useState<ParsedSchema>({
-		tables: [],
-		relationships: [],
-	});
-	const [selectedSchema, setSelectedSchema] = useState<string>("");
-	const [isRendering, setIsRendering] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="flex min-h-screen flex-col bg-bg text-ink">
+      <header className="z-sticky sticky top-0 flex h-12 items-center justify-between border-b border-border-subtle bg-bg/85 px-6 backdrop-blur">
+        <Link href="/" className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+          <span className="text-sm font-semibold tracking-tight">SQL Schema Visualizer</span>
+        </Link>
+        <nav className="flex items-center gap-2">
+          <a
+            href="#capabilities"
+            className="hidden rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-fast ease-out hover:bg-surface-2 hover:text-ink sm:inline-flex"
+          >
+            Capabilities
+          </a>
+          <a
+            href="#how-it-works"
+            className="hidden rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-fast ease-out hover:bg-surface-2 hover:text-ink sm:inline-flex"
+          >
+            How it works
+          </a>
+          <Link
+            href="/app"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover"
+          >
+            Open app
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+          <ThemeToggle />
+        </nav>
+      </header>
 
-	const schemaNames = useMemo(() => {
-		const names = Array.from(new Set(schema.tables.map((t) => t.schema)));
-		return names.sort();
-	}, [schema]);
+      <main className="flex-1">
+        <section className="px-6 pt-16 pb-20 sm:pt-24 sm:pb-28">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-md border border-border-strong bg-surface-2 px-2.5 py-1 text-[11px] font-medium text-ink-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+              Free, client-side. Nothing leaves your browser.
+            </div>
+            <h1 className="text-balance text-4xl font-semibold tracking-tight text-ink sm:text-5xl md:text-[3.5rem] md:leading-[1.05]">
+              Turn PostgreSQL DDL into an interactive ER diagram.
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-pretty text-base text-ink-2 sm:text-lg">
+              Paste{' '}
+              <code className="rounded border border-border-subtle bg-surface-2 px-1.5 py-0.5 font-mono text-[0.85em] text-ink">
+                CREATE TABLE
+              </code>{' '}
+              statements. See the tables, columns, primary keys, and foreign keys laid out as a
+              navigable graph.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/app"
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover"
+              >
+                Visualize your schema
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <a
+                href="#sample"
+                className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface-2 px-5 text-sm font-medium text-ink-2 transition-colors duration-fast ease-out hover:bg-surface-3 hover:text-ink"
+              >
+                See it in action
+              </a>
+            </div>
+          </div>
+        </section>
 
-	const handleRender = () => {
-		setError(null);
-		setIsRendering(true);
-		try {
-			const parsed = parseSql(sql);
-			setSchema(parsed);
-			const names = Array.from(
-				new Set(parsed.tables.map((t) => t.schema)),
-			).sort();
-			setSelectedSchema(names[0] ?? "");
-			if (parsed.tables.length === 0) {
-				toast.info("No CREATE TABLE statements found in the pasted SQL.");
-			} else {
-				toast.success(
-					`Rendered ${parsed.tables.length} tables, ${parsed.relationships.length} relationships`,
-				);
-			}
-		} catch (err) {
-			const message = formatParseError(err);
-			setError(message);
-			toast.error("Failed to parse SQL");
-		} finally {
-			setIsRendering(false);
-		}
-	};
+        <section id="sample" className="px-6 pb-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-6 flex items-end justify-between gap-3">
+              <div>
+                <p className="font-mono text-[11px] text-ink-3">sample schema</p>
+                <p className="mt-1 text-sm text-ink-2">
+                  Pan, zoom, drag tables. Use the toolbar to copy or export.
+                </p>
+              </div>
+              <Link
+                href="/app"
+                className="hidden h-7 items-center gap-1.5 rounded-md border border-border-strong bg-surface-2 px-2.5 text-xs font-medium text-ink-2 transition-colors duration-fast ease-out hover:bg-surface-3 hover:text-ink sm:inline-flex"
+              >
+                Paste your own
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <SampleSchemaVisualizer />
+          </div>
+        </section>
 
-	const handleLoadExample = () => {
-		setSql(SAMPLE_SCHEMA);
-		setError(null);
-		// Auto-render after a tick so the textarea updates first
-		setTimeout(() => {
-			try {
-				const parsed = parseSql(SAMPLE_SCHEMA);
-				setSchema(parsed);
-				const names = Array.from(
-					new Set(parsed.tables.map((t) => t.schema)),
-				).sort();
-				setSelectedSchema(names[0] ?? "");
-				toast.success(`Loaded example schema: ${parsed.tables.length} tables`);
-			} catch (err) {
-				setError(formatParseError(err));
-			}
-		}, 0);
-	};
+        <section
+          id="capabilities"
+          className="border-t border-border-subtle bg-surface-1 px-6 py-20"
+        >
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-12 max-w-2xl">
+              <p className="font-mono text-[11px] text-ink-3">capabilities</p>
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Everything you need to explore a schema.
+              </h2>
+              <p className="mt-3 text-pretty text-sm text-ink-2 sm:text-base">
+                Built for engineers who want to understand a database layout in seconds, not hours.
+              </p>
+            </div>
 
-	const handleClear = () => {
-		setSql("");
-		setSchema({ tables: [], relationships: [] });
-		setSelectedSchema("");
-		setError(null);
-	};
+            <div className="grid gap-px overflow-hidden rounded-md border border-border-strong bg-border-subtle sm:grid-cols-2 lg:grid-cols-3">
+              <FeatureCell
+                icon={<Pointer className="h-4 w-4" aria-hidden="true" />}
+                title="Interactive canvas"
+                description="Pan, zoom, and drag nodes. Hover to trace foreign keys across tables and schemas."
+              />
+              <FeatureCell
+                icon={<Workflow className="h-4 w-4" aria-hidden="true" />}
+                title="Auto layout"
+                description="Tables arrange themselves to minimize edge crossings. Reset any time."
+              />
+              <FeatureCell
+                icon={<Network className="h-4 w-4" aria-hidden="true" />}
+                title="Multi-schema support"
+                description="Switch between schemas to focus on one area, or view cross-schema foreign keys at a glance."
+              />
+              <FeatureCell
+                icon={<ImageDown className="h-4 w-4" aria-hidden="true" />}
+                title="Export to PNG and SVG"
+                description="Download a high-resolution image of your diagram for docs, slides, or pull requests."
+              />
+              <FeatureCell
+                icon={<Database className="h-4 w-4" aria-hidden="true" />}
+                title="Privacy first"
+                description="All parsing and rendering happens in your browser. Your SQL never leaves the client."
+              />
+              <FeatureCell
+                icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
+                title="Copy as SQL or Markdown"
+                description="Round-trip a schema between your editor, a doc, and the visualizer without losing structure."
+              />
+            </div>
+          </div>
+        </section>
 
-	const filteredSchema = useMemo(() => {
-		if (!selectedSchema) return schema;
-		return {
-			tables: schema.tables.filter((t) => t.schema === selectedSchema),
-			relationships: schema.relationships.filter(
-				(r) =>
-					r.sourceSchema === selectedSchema ||
-					r.targetSchema === selectedSchema,
-			),
-		};
-	}, [schema, selectedSchema]);
+        <section id="how-it-works" className="px-6 py-20">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-12 max-w-2xl">
+              <h2 className="text-balance text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                How it works.
+              </h2>
+              <p className="mt-3 text-pretty text-sm text-ink-2 sm:text-base">
+                From raw SQL to a clean ER diagram in three steps.
+              </p>
+            </div>
+            <ol className="grid gap-6 md:grid-cols-3">
+              <li>
+                <span className="font-mono text-[11px] text-ink-3">01</span>
+                <h3 className="mt-2 text-lg font-semibold text-ink">Paste your SQL</h3>
+                <p className="mt-2 text-sm text-ink-2">
+                  Drop in <code className="font-mono text-[0.85em] text-ink">CREATE TABLE</code>{' '}
+                  statements with primary key, foreign key, and unique constraints.
+                </p>
+              </li>
+              <li>
+                <span className="font-mono text-[11px] text-ink-3">02</span>
+                <h3 className="mt-2 text-lg font-semibold text-ink">Render the graph</h3>
+                <p className="mt-2 text-sm text-ink-2">
+                  The parser builds a table-and-column model and computes an automatic layout.
+                </p>
+              </li>
+              <li>
+                <span className="font-mono text-[11px] text-ink-3">03</span>
+                <h3 className="mt-2 text-lg font-semibold text-ink">Explore and export</h3>
+                <p className="mt-2 text-sm text-ink-2">
+                  Pan and zoom the canvas, filter by schema, and download a PNG or SVG when you are
+                  ready.
+                </p>
+              </li>
+            </ol>
+          </div>
+        </section>
 
-	return (
-		<main className="flex h-screen flex-col overflow-hidden">
-			<Toaster position="top-center" richColors />
-			<header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-				<div className="flex items-center gap-2">
-					<Sparkles className="h-5 w-5 text-blue-600" />
-					<h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-						SQL Schema Visualizer
-					</h1>
-				</div>
-				<div className="text-xs text-zinc-500">Paste DDL → render graph</div>
-			</header>
+        <section className="border-t border-border-subtle px-6 py-16">
+          <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-balance text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+                Ready to look at your schema.
+              </h2>
+              <p className="mt-1.5 text-sm text-ink-2">
+                No account. No setup. Paste your DDL and you are in.
+              </p>
+            </div>
+            <Link
+              href="/app"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover"
+            >
+              Launch the app
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+      </main>
 
-			<div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-				{/* SQL input panel */}
-				<section className="flex w-full flex-col border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 lg:w-105 lg:border-b-0 lg:border-r">
-					<div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-						<span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-							SQL Input
-						</span>
-						<div className="flex items-center gap-2">
-							<button
-								type="button"
-								onClick={handleLoadExample}
-								className="rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
-							>
-								Load example
-							</button>
-							<button
-								type="button"
-								onClick={handleClear}
-								className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800"
-							>
-								<Trash2 size={12} />
-								Clear
-							</button>
-						</div>
-					</div>
+      <footer className="border-t border-border-subtle px-6 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
+          <div className="flex items-center gap-2 text-ink-3">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <span className="text-xs font-medium">SQL Schema Visualizer</span>
+          </div>
+          <p className="text-xs text-ink-3">Open source. Client-side. No tracking.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
 
-					<div className="relative flex-1">
-						<textarea
-							value={sql}
-							onChange={(e) => setSql(e.target.value)}
-							placeholder="Paste your CREATE TABLE statements here..."
-							spellCheck={false}
-							className="h-full w-full resize-none bg-transparent p-4 font-mono text-xs leading-5 text-zinc-800 outline-none placeholder:text-zinc-400 dark:text-zinc-200"
-						/>
-					</div>
-
-					{error && (
-						<div className="mx-4 mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-							{error}
-						</div>
-					)}
-
-					<div className="flex items-center gap-2 border-t border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-						<button
-							type="button"
-							onClick={handleRender}
-							disabled={isRendering || !sql.trim()}
-							className={cn(
-								"flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50",
-								isRendering && "cursor-wait",
-							)}
-						>
-							{isRendering && <Loader2 size={16} className="animate-spin" />}
-							Render Graph
-						</button>
-					</div>
-
-					{schemaNames.length > 1 && (
-						<div className="flex items-center gap-2 border-t border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
-							<label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-								Schema:
-							</label>
-							<select
-								value={selectedSchema}
-								onChange={(e) => setSelectedSchema(e.target.value)}
-								className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-950"
-							>
-								{schemaNames.map((name) => (
-									<option key={name} value={name}>
-										{name}
-									</option>
-								))}
-							</select>
-						</div>
-					)}
-				</section>
-
-				{/* Graph canvas */}
-				<section className="relative flex-1 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-					<ReactFlowProvider>
-						<SchemaGraphCanvas
-							schema={filteredSchema}
-							selectedSchemaName={selectedSchema}
-						/>
-					</ReactFlowProvider>
-				</section>
-			</div>
-		</main>
-	);
+function FeatureCell({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 bg-surface-1 p-5">
+      <div className="text-accent">{icon}</div>
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      <p className="text-sm text-ink-2">{description}</p>
+    </div>
+  );
 }

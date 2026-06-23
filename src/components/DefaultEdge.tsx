@@ -1,20 +1,19 @@
-'use client'
+'use client';
 
 import {
   BaseEdge,
-  Edge,
+  type Edge,
   EdgeLabelRenderer,
-  EdgeProps,
+  type EdgeProps,
   getSmoothStepPath,
   Position,
   useReactFlow,
-} from '@xyflow/react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { memo, useCallback, useState } from 'react'
-
-import { cn } from '@/lib/utils'
-import { useSchemaGraphContext } from './SchemaGraphContext'
-import type { EdgeData } from '@/lib/types'
+} from '@xyflow/react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { memo, useCallback, useState } from 'react';
+import type { EdgeData } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { useSchemaGraphContext } from './SchemaGraphContext';
 
 const DefaultEdgeComponent = ({
   id,
@@ -33,7 +32,7 @@ const DefaultEdgeComponent = ({
   pathOptions,
   ...props
 }: EdgeProps<Edge<EdgeData>>) => {
-  const { isDownloading } = useSchemaGraphContext()
+  const { isDownloading } = useSchemaGraphContext();
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -44,15 +43,14 @@ const DefaultEdgeComponent = ({
     borderRadius: pathOptions?.borderRadius,
     offset: pathOptions?.offset,
     stepPosition: pathOptions?.stepPosition,
-  })
+  });
 
   return (
     <>
       <BaseEdge
         id={id}
         path={edgePath}
-        className={cn(selected ? '!stroke-blue-600' : isDownloading ? '!stroke-black' : undefined)}
-        stroke="#71717a"
+        className={cn(selected ? '!stroke-accent' : isDownloading ? '!stroke-ink' : '!stroke-fk')}
         strokeWidth={selected ? 2.5 : 1.5}
         {...props}
       />
@@ -69,10 +67,10 @@ const DefaultEdgeComponent = ({
         />
       ) : null}
     </>
-  )
-}
+  );
+};
 
-export const DefaultEdge = memo(DefaultEdgeComponent)
+export const DefaultEdge = memo(DefaultEdgeComponent);
 
 const EdgeRelationInfo = ({
   data,
@@ -83,59 +81,59 @@ const EdgeRelationInfo = ({
   targetX,
   sourceX,
 }: {
-  data: EdgeData
-  edgePath: string
-  source: string
-  target: string
-  labelX: number
-  labelY: number
-  sourceX: number
-  targetX: number
+  data: EdgeData;
+  edgePath: string;
+  source: string;
+  target: string;
+  labelX: number;
+  labelY: number;
+  sourceX: number;
+  targetX: number;
 }) => {
-  const [show, setShow] = useState(false)
-  const reactFlowInstance = useReactFlow()
+  const [show, setShow] = useState(false);
+  const reactFlowInstance = useReactFlow();
 
   const checkIfShouldBeDisplayed = useCallback(
     (relationInfoElement: HTMLDivElement | null) => {
-      if (!relationInfoElement) return
-      const sourceNode = reactFlowInstance.getNode(source)
-      const targetNode = reactFlowInstance.getNode(target)
-      if (!sourceNode || !targetNode) return
+      if (!relationInfoElement) return;
+      const sourceNode = reactFlowInstance.getNode(source);
+      const targetNode = reactFlowInstance.getNode(target);
+      if (!sourceNode || !targetNode) return;
 
-      const relationInfoRect = relationInfoElement.getBoundingClientRect()
+      const relationInfoRect = relationInfoElement.getBoundingClientRect();
       const relationInfoOriginPositionInReactFlow = reactFlowInstance.screenToFlowPosition({
         x: relationInfoRect.x,
         y: relationInfoRect.y,
-      })
+      });
       const relationInfoTargetPositionInReactFlow = reactFlowInstance.screenToFlowPosition({
         x: relationInfoRect.x + relationInfoRect.width,
         y: relationInfoRect.y + relationInfoRect.height,
-      })
+      });
       const relationInfoReactFlowRect = {
         x: relationInfoOriginPositionInReactFlow.x,
         y: relationInfoOriginPositionInReactFlow.y,
         width: relationInfoTargetPositionInReactFlow.x - relationInfoOriginPositionInReactFlow.x,
         height: relationInfoTargetPositionInReactFlow.y - relationInfoOriginPositionInReactFlow.y,
-      }
+      };
       const isNodeIntersectingWithSource = reactFlowInstance.isNodeIntersecting(
         sourceNode,
         relationInfoReactFlowRect
-      )
+      );
       const isNodeIntersectingWithTarget = reactFlowInstance.isNodeIntersecting(
         targetNode,
         relationInfoReactFlowRect
-      )
-      setShow(!isNodeIntersectingWithSource && !isNodeIntersectingWithTarget)
+      );
+      setShow(!isNodeIntersectingWithSource && !isNodeIntersectingWithTarget);
     },
     [reactFlowInstance, source, target]
-  )
+  );
 
   return (
     <EdgeLabelRenderer>
       <div
         ref={checkIfShouldBeDisplayed}
         className={cn(
-          'absolute pointer-events-auto z-50 flex items-center gap-1 rounded-md border border-blue-600 bg-white px-1.5 py-1 text-[10px] shadow-sm transition-opacity dark:bg-zinc-900',
+          'z-tooltip pointer-events-auto absolute flex items-center gap-1 rounded-md border border-accent bg-surface-1 px-1.5 py-1 text-[10px] text-ink shadow-md transition-opacity duration-fast ease-out',
           show ? 'opacity-100' : 'opacity-0'
         )}
         style={{
@@ -144,36 +142,52 @@ const EdgeRelationInfo = ({
       >
         {sourceX < targetX ? (
           <>
-            <EdgeNodeData schema={data.sourceSchemaName} table={data.sourceName} column={data.sourceColumnName} />
-            <ArrowRight size={12} className="text-blue-600" />
-            <EdgeNodeData schema={data.targetSchemaName} table={data.targetName} column={data.targetColumnName} />
+            <EdgeNodeData
+              schema={data.sourceSchemaName}
+              table={data.sourceName}
+              column={data.sourceColumnName}
+            />
+            <ArrowRight size={12} className="text-accent" />
+            <EdgeNodeData
+              schema={data.targetSchemaName}
+              table={data.targetName}
+              column={data.targetColumnName}
+            />
           </>
         ) : (
           <>
-            <EdgeNodeData schema={data.targetSchemaName} table={data.targetName} column={data.targetColumnName} />
-            <ArrowLeft size={12} className="text-blue-600" />
-            <EdgeNodeData schema={data.sourceSchemaName} table={data.sourceName} column={data.sourceColumnName} />
+            <EdgeNodeData
+              schema={data.targetSchemaName}
+              table={data.targetName}
+              column={data.targetColumnName}
+            />
+            <ArrowLeft size={12} className="text-accent" />
+            <EdgeNodeData
+              schema={data.sourceSchemaName}
+              table={data.sourceName}
+              column={data.sourceColumnName}
+            />
           </>
         )}
       </div>
     </EdgeLabelRenderer>
-  )
-}
+  );
+};
 
 const EdgeNodeData = ({
   schema,
   table,
   column,
 }: {
-  schema: string
-  table: string
-  column: string
+  schema: string;
+  table: string;
+  column: string;
 }) => {
   return (
     <span className="whitespace-nowrap font-mono">
-      <span className="text-zinc-500">{schema}.</span>
-      <span className="text-zinc-900 dark:text-zinc-100">{table}</span>
-      <span className="text-blue-600">.{column}</span>
+      <span className="text-ink-3">{schema}.</span>
+      <span className="text-ink">{table}</span>
+      <span className="text-accent">.{column}</span>
     </span>
-  )
-}
+  );
+};

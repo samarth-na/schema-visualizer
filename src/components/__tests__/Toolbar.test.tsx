@@ -1,10 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import type { ParsedTable } from '@/lib/types';
+import { Toolbar } from '../Toolbar';
 
-import { Toolbar } from '../Toolbar'
-import type { ParsedTable } from '@/lib/types'
-
-const tables: ParsedTable[] = [{ schema: 'public', name: 'users', comment: null, columns: [] }]
+const tables: ParsedTable[] = [{ schema: 'public', name: 'users', comment: null, columns: [] }];
 
 describe('Toolbar', () => {
   it('disables buttons when no tables', () => {
@@ -17,14 +16,14 @@ describe('Toolbar', () => {
         onCopySQL={vi.fn()}
         onCopyMarkdown={vi.fn()}
       />
-    )
+    );
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.every((b) => b.hasAttribute('disabled'))).toBe(true)
-  })
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.every((b) => b.hasAttribute('disabled'))).toBe(true);
+  });
 
   it('calls onCopySQL when Copy SQL is clicked', () => {
-    const onCopySQL = vi.fn()
+    const onCopySQL = vi.fn();
     render(
       <Toolbar
         tables={tables}
@@ -34,14 +33,14 @@ describe('Toolbar', () => {
         onCopySQL={onCopySQL}
         onCopyMarkdown={vi.fn()}
       />
-    )
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: /copy sql/i }))
-    expect(onCopySQL).toHaveBeenCalled()
-  })
+    fireEvent.click(screen.getByRole('button', { name: /copy sql/i }));
+    expect(onCopySQL).toHaveBeenCalled();
+  });
 
   it('calls onCopyMarkdown when Copy Markdown is clicked', () => {
-    const onCopyMarkdown = vi.fn()
+    const onCopyMarkdown = vi.fn();
     render(
       <Toolbar
         tables={tables}
@@ -51,9 +50,9 @@ describe('Toolbar', () => {
         onCopySQL={vi.fn()}
         onCopyMarkdown={onCopyMarkdown}
       />
-    )
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: /copy markdown/i }))
-    expect(onCopyMarkdown).toHaveBeenCalled()
-  })
-})
+    fireEvent.click(screen.getByRole('button', { name: /copy markdown/i }));
+    expect(onCopyMarkdown).toHaveBeenCalled();
+  });
+});

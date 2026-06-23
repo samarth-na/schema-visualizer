@@ -320,7 +320,7 @@ The current fallback uses `rel.targetTable` as schema. Once relationship schemas
 
 ## 5. Tooling
 
-### Add scripts
+### Scripts (current)
 
 File: `package.json`
 
@@ -330,42 +330,36 @@ File: `package.json`
   "build": "next build",
   "start": "next start",
   "typecheck": "tsc --noEmit",
-  "lint": "eslint .",
   "test": "vitest run",
-  "test:watch": "vitest"
+  "test:watch": "vitest",
+  "lint": "biome lint .",
+  "lint:fix": "biome lint . --write",
+  "format": "biome format .",
+  "format:fix": "biome format . --write",
+  "check": "biome check .",
+  "check:fix": "biome check . --write"
 }
 ```
 
-### ESLint for Next.js 16
+### Linter / formatter: Biome
 
-Install:
+This project uses **Biome 2.5** (`@biomejs/biome`) as the single tool for linting and formatting. `next lint` was removed in Next.js 16, and ESLint is not installed.
+
+Config lives in `biome.json`. Highlights:
+
+- Formatter: 2-space indent, single quotes, double quotes in JSX, semicolons, `es5` trailing commas, 100 col line width.
+- Linter rules: `recommended` preset for `a11y`, `correctness`, `suspicious`, `style`, `complexity`.
+- `suspicious.noExplicitAny` is off by default; `parseSql.ts` and test files explicitly re-allow it.
+- `style.useNodejsImportProtocol` is off (vitest config uses bare `path`).
+- `a11y.noAutofocus` is off in `FindTableSelector.tsx` only (intentional UX).
+- CSS parser: `tailwindDirectives: true` so `@theme inline { ... }` parses.
+- `public/**` is excluded from the linter (unused `create-next-app` SVG boilerplate).
+
+Install / update:
 
 ```sh
-npm i -D eslint eslint-config-next
+npm i -D @biomejs/biome
 ```
-
-Create `eslint.config.mjs`:
-
-```js
-import { defineConfig, globalIgnores } from 'eslint/config'
-import nextVitals from 'eslint-config-next/core-web-vitals'
-import nextTs from 'eslint-config-next/typescript'
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  globalIgnores([
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-  ]),
-])
-
-export default eslintConfig
-```
-
-Do not use `next lint`; it was removed in Next.js 16.
 
 ### Tests
 
@@ -414,7 +408,8 @@ For cleanup-only changes:
 
 ```sh
 npx fallow dead-code
-npx tsc --noEmit
+npm run typecheck
+npm run check
 npm run build
 ```
 
@@ -422,7 +417,7 @@ For parser or graph behavior changes:
 
 ```sh
 npm run test
-npx tsc --noEmit
+npm run typecheck
 npm run build
 ```
 
@@ -432,8 +427,8 @@ For final full validation:
 npx fallow
 npm run test
 npm run typecheck
-npm run lint
+npm run check
 npm run build
 ```
 
-If `lint`, `test`, or `typecheck` scripts do not exist yet, use the direct commands described above.
+`npm run check` runs `biome check .` (lint + format, read-only). Use `npm run check:fix` to apply safe fixes. Use the per-tool scripts (`npm run lint` / `npm run format`) when you want only one.

@@ -1,25 +1,30 @@
-'use client'
+'use client';
 
-import { Check, Copy, LayoutGrid } from 'lucide-react'
-import { useState } from 'react'
-
-import { FindTableSelector } from './FindTableSelector'
-import type { ParsedTable } from '@/lib/types'
+import { Check, Copy, LayoutGrid } from 'lucide-react';
+import { useState } from 'react';
+import type { ParsedTable } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { FindTableSelector } from './FindTableSelector';
 
 type ToolbarProps = {
-  tables: ParsedTable[]
-  disabled: boolean
-  onResetLayout: () => void
-  onFindTable: (tableName: string) => void
-  onCopySQL: () => void
-  onCopyMarkdown: () => void
-  onDownloadPng?: () => void
-  onDownloadSvg?: () => void
-  isDownloading?: boolean
-}
+  tables: ParsedTable[];
+  disabled: boolean;
+  onResetLayout: () => void;
+  onFindTable: (tableName: string) => void;
+  onCopySQL: () => void;
+  onCopyMarkdown: () => void;
+  onDownloadPng?: () => void;
+  onDownloadSvg?: () => void;
+  isDownloading?: boolean;
+};
 
-const toolbarButtonClass =
-  'flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+const toolbarButtonClass = cn(
+  'inline-flex h-7 items-center gap-1.5 rounded-md border border-border-strong bg-surface-2 px-2.5',
+  'text-xs font-medium text-ink-2',
+  'transition-colors duration-fast ease-out',
+  'hover:bg-surface-3 hover:text-ink',
+  'disabled:opacity-40 disabled:hover:bg-surface-2 disabled:hover:text-ink-2'
+);
 
 export function Toolbar({
   tables,
@@ -32,28 +37,32 @@ export function Toolbar({
   onDownloadSvg,
   isDownloading,
 }: ToolbarProps) {
-  const [copied, setCopied] = useState<'sql' | 'md' | null>(null)
+  const [copied, setCopied] = useState<'sql' | 'md' | null>(null);
 
   const handleCopy = (type: 'sql' | 'md') => {
-    if (type === 'sql') onCopySQL()
-    else onCopyMarkdown()
-    setCopied(type)
-    setTimeout(() => setCopied(null), 2000)
-  }
+    if (type === 'sql') onCopySQL();
+    else onCopyMarkdown();
+    setCopied(type);
+    setTimeout(() => setCopied(null), 1500);
+  };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="z-sticky flex h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-surface-1 px-3">
       <div className="flex items-center gap-2">
         <FindTableSelector tables={tables} onSelect={onFindTable} disabled={disabled} />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           disabled={disabled || isDownloading}
           onClick={() => handleCopy('sql')}
           className={toolbarButtonClass}
         >
-          {copied === 'sql' ? <Check size={14} /> : <Copy size={14} />}
+          {copied === 'sql' ? (
+            <Check size={12} strokeWidth={1.5} />
+          ) : (
+            <Copy size={12} strokeWidth={1.5} />
+          )}
           Copy SQL
         </button>
         <button
@@ -62,7 +71,11 @@ export function Toolbar({
           onClick={() => handleCopy('md')}
           className={toolbarButtonClass}
         >
-          {copied === 'md' ? <Check size={14} /> : <Copy size={14} />}
+          {copied === 'md' ? (
+            <Check size={12} strokeWidth={1.5} />
+          ) : (
+            <Copy size={12} strokeWidth={1.5} />
+          )}
           Copy Markdown
         </button>
         {onDownloadPng && (
@@ -91,10 +104,10 @@ export function Toolbar({
           onClick={onResetLayout}
           className={toolbarButtonClass}
         >
-          <LayoutGrid size={14} />
+          <LayoutGrid size={12} strokeWidth={1.5} />
           Auto layout
         </button>
       </div>
     </div>
-  )
+  );
 }

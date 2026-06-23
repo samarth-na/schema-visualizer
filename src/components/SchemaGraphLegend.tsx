@@ -1,37 +1,39 @@
-'use client'
+'use client';
 
-import { DiamondIcon, Fingerprint, Hash, Key } from 'lucide-react'
+import { DiamondIcon, Fingerprint, Hash, Key } from 'lucide-react';
+
+const legendItemClass = 'flex items-center gap-1.5 font-mono text-[11px] text-ink-2';
 
 export function SchemaGraphLegend() {
   return (
-    <div className="absolute bottom-0 left-0 right-0 border-t border-zinc-200 dark:border-zinc-800 flex justify-center px-1 py-2 shadow-md bg-white/90 dark:bg-zinc-900/90 w-full z-10">
-      <ul className="flex flex-wrap items-center justify-center gap-4">
-        <li className="flex items-center text-xs font-mono gap-1 text-zinc-700 dark:text-zinc-300">
-          <Key size={15} strokeWidth={1.5} className="shrink-0 text-zinc-500" />
-          Primary key
+    <div className="absolute inset-x-0 bottom-0 z-sticky flex justify-center border-t border-border-subtle bg-surface-1/95 px-3 py-2 shadow-md backdrop-blur">
+      <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <li className={legendItemClass}>
+          <Key size={12} strokeWidth={1.5} className="shrink-0 text-pk" />
+          <span>Primary key</span>
         </li>
-        <li className="flex items-center text-xs font-mono gap-1 text-zinc-700 dark:text-zinc-300">
-          <Hash size={15} strokeWidth={1.5} className="shrink-0 text-zinc-500" />
-          Identity
+        <li className={legendItemClass}>
+          <Hash size={12} strokeWidth={1.5} className="shrink-0 text-id" />
+          <span>Identity</span>
         </li>
-        <li className="flex items-center text-xs font-mono gap-1 text-zinc-700 dark:text-zinc-300">
-          <Fingerprint size={15} strokeWidth={1.5} className="shrink-0 text-zinc-500" />
-          Unique
+        <li className={legendItemClass}>
+          <Fingerprint size={12} strokeWidth={1.5} className="shrink-0 text-uq" />
+          <span>Unique</span>
         </li>
-        <li className="flex items-center text-xs font-mono gap-1 text-zinc-700 dark:text-zinc-300">
-          <DiamondIcon size={15} strokeWidth={1.5} className="shrink-0 text-zinc-500" />
-          Nullable
+        <li className={legendItemClass}>
+          <DiamondIcon size={12} strokeWidth={1.5} className="shrink-0 text-null" />
+          <span>Nullable</span>
         </li>
-        <li className="flex items-center text-xs font-mono gap-1 text-zinc-700 dark:text-zinc-300">
+        <li className={legendItemClass}>
           <DiamondIcon
-            size={15}
+            size={12}
             strokeWidth={1.5}
             fill="currentColor"
-            className="shrink-0 text-zinc-500"
+            className="shrink-0 text-null"
           />
-          Non-Nullable
+          <span>Not null</span>
         </li>
       </ul>
     </div>
-  )
+  );
 }

@@ -1,8 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-
-import { DefaultEdge } from '../DefaultEdge'
-import type { EdgeData } from '@/lib/types'
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import type { EdgeData } from '@/lib/types';
+import { DefaultEdge } from '../DefaultEdge';
 
 vi.mock('@xyflow/react', () => ({
   BaseEdge: ({ id }: { id: string }) => <div data-testid={`base-edge-${id}`} />,
@@ -14,11 +13,11 @@ vi.mock('@xyflow/react', () => ({
     screenToFlowPosition: vi.fn(() => ({ x: 0, y: 0 })),
     isNodeIntersecting: vi.fn(() => false),
   }),
-}))
+}));
 
 vi.mock('../SchemaGraphContext', () => ({
   useSchemaGraphContext: () => ({ selectedEdge: undefined, isDownloading: false }),
-}))
+}));
 
 const data: EdgeData = {
   sourceName: 'posts',
@@ -27,7 +26,7 @@ const data: EdgeData = {
   targetName: 'users',
   targetSchemaName: 'public',
   targetColumnName: 'id',
-}
+};
 
 describe('DefaultEdge', () => {
   it('renders the base edge when selected', () => {
@@ -47,8 +46,8 @@ describe('DefaultEdge', () => {
           data,
         } as any)}
       />
-    )
+    );
 
-    expect(screen.getByTestId('base-edge-edge1')).toBeInTheDocument()
-  })
-})
+    expect(screen.getByTestId('base-edge-edge1')).toBeInTheDocument();
+  });
+});

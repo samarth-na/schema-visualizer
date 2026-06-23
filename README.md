@@ -96,7 +96,7 @@ src/lib/
 
 ## Development Notes
 
-- This is Next.js 16. Do not use `next lint`; Next 16 uses the ESLint CLI with `eslint-config-next` flat config.
+- This is Next.js 16. Linting and formatting are handled by Biome (`biome.json`); use `npm run check` / `npm run check:fix`. Do not add ESLint or run `next lint`.
 - Tailwind 4 is configured through `postcss.config.mjs` and `@tailwindcss/postcss`.
 - The `@/*` path alias resolves to `./src/*`.
 - Add parser tests before refactoring `src/lib/parseSql.ts`.

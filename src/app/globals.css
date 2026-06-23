@@ -1,49 +1,241 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+ * Design system tokens
+ * Default: dark mode. Light mode is opt-in via data-theme="light".
+ * All values are OKLCH. See DESIGN.md for rationale.
+ * ============================================================ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+@theme {
+  /* Color — dark mode (default) */
+  --color-bg: oklch(0.12 0 0);
+  --color-surface-1: oklch(0.16 0 0);
+  --color-surface-2: oklch(0.2 0 0);
+  --color-surface-3: oklch(0.24 0 0);
+  --color-border-subtle: oklch(0.24 0 0);
+  --color-border-strong: oklch(0.32 0 0);
+  --color-ink: oklch(0.96 0 0);
+  --color-ink-2: oklch(0.78 0 0);
+  --color-ink-3: oklch(0.66 0 0);
+  --color-primary: oklch(0.78 0.09 110);
+  --color-primary-hover: oklch(0.84 0.09 110);
+  --color-primary-pressed: oklch(0.72 0.09 110);
+  --color-on-primary: oklch(1 0 0);
+  --color-accent: oklch(0.78 0.13 75);
+  --color-accent-subtle: oklch(0.3 0.06 75);
+  --color-on-accent: oklch(0.18 0 0);
+  --color-focus: oklch(0.78 0.13 75);
+  --color-success: oklch(0.74 0.13 150);
+  --color-warning: oklch(0.78 0.14 80);
+  --color-error: oklch(0.68 0.18 25);
+  --color-info: oklch(0.74 0.08 230);
+
+  /* Data signals (independent of brand) */
+  --color-pk: oklch(0.78 0.13 75);
+  --color-id: oklch(0.74 0.06 280);
+  --color-uq: oklch(0.74 0.13 150);
+  --color-null: oklch(0.74 0 0);
+  --color-fk: oklch(0.78 0.13 75);
+
+  /* Typography */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-instant: 0ms;
+  --duration-fast: 100ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --duration-pane: 400ms;
+
+  /* Z-index */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-toast: 50;
+  --z-modal: 60;
+  --z-tooltip: 70;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 8px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 8px 16px oklch(0 0 0 / 0.35);
+  --shadow-xl: 0 16px 32px oklch(0 0 0 / 0.4);
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    /* Color — light mode overrides */
+    --color-bg: oklch(1 0 0);
+    --color-surface-1: oklch(0.985 0 0);
+    --color-surface-2: oklch(0.965 0 0);
+    --color-surface-3: oklch(0.94 0 0);
+    --color-border-subtle: oklch(0.92 0 0);
+    --color-border-strong: oklch(0.82 0 0);
+    --color-ink: oklch(0.18 0 0);
+    --color-ink-2: oklch(0.36 0 0);
+    --color-ink-3: oklch(0.46 0 0);
+    --color-primary: oklch(0.5 0.09 110);
+    --color-primary-hover: oklch(0.44 0.09 110);
+    --color-primary-pressed: oklch(0.4 0.09 110);
+    --color-on-primary: oklch(1 0 0);
+    --color-accent: oklch(0.55 0.14 65);
+    --color-accent-subtle: oklch(0.94 0.06 75);
+    --color-on-accent: oklch(1 0 0);
+    --color-focus: oklch(0.55 0.14 65);
+    --color-success: oklch(0.5 0.13 150);
+    --color-warning: oklch(0.55 0.14 70);
+    --color-error: oklch(0.5 0.18 25);
+    --color-info: oklch(0.5 0.08 230);
+
+    --color-pk: oklch(0.55 0.14 65);
+    --color-id: oklch(0.5 0.08 280);
+    --color-uq: oklch(0.5 0.13 150);
+    --color-null: oklch(0.46 0 0);
+    --color-fk: oklch(0.55 0.14 65);
+
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.1);
+    --shadow-md: 0 4px 8px oklch(0 0 0 / 0.08);
+    --shadow-lg: 0 8px 16px oklch(0 0 0 / 0.1);
+    --shadow-xl: 0 16px 32px oklch(0 0 0 / 0.12);
+
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    transition:
+      background-color var(--duration-slow) var(--ease-out),
+      color var(--duration-slow) var(--ease-out);
+  }
+
+  /* Headings: balance the wrap. Body: pretty. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Universal focus ring */
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Reduced motion: drop all but state changes */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: required to override component transitions for prefers-reduced-motion */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: required to override component animations for prefers-reduced-motion */
+      animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: required to override component transitions for prefers-reduced-motion */
+      transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: required to override scroll-behavior for prefers-reduced-motion */
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-/* Ensure ReactFlow canvas fills its container */
+/* ============================================================
+ * React Flow integration — bind to design tokens
+ * ============================================================ */
+
 .react-flow {
-  --xy-edge-stroke: #71717a;
-  --xy-edge-stroke-selected: #2563eb;
-  --xy-node-border: #e4e4e7;
+  --xy-edge-stroke: var(--color-fk);
+  --xy-edge-stroke-selected: var(--color-accent);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-stroke-width-selected: 2.5;
+  --xy-node-border: var(--color-border-strong);
+  --xy-node-background-color: var(--color-surface-1);
+  --xy-node-color: var(--color-ink);
   --xy-handle-background: transparent;
+  --xy-handle-border: transparent;
+  --xy-controls-button-background: var(--color-surface-2);
+  --xy-controls-button-background-hover: var(--color-surface-3);
+  --xy-controls-button-color: var(--color-ink-2);
+  --xy-controls-button-color-hover: var(--color-ink);
+  --xy-controls-button-border-color: var(--color-border-subtle);
+  --xy-minimap-background: var(--color-surface-1);
+  --xy-minimap-mask-background: oklch(0 0 0 / 0.2);
+  --xy-minimap-mask-stroke-color: var(--color-border-subtle);
+  --xy-attribution-background: transparent;
+  --xy-background-pattern-color: var(--color-border-subtle);
+  --xy-background-pattern-color-default: var(--color-border-subtle);
 }
 
-/* Custom scrollbar for the SQL textarea */
+.react-flow__edge-path {
+  stroke: var(--color-fk);
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path,
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--color-accent);
+}
+
+.react-flow__handle {
+  background: transparent;
+  border: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+}
+
+.react-flow__attribution {
+  background: transparent;
+  color: var(--color-ink-3);
+  font-size: 10px;
+  padding: 2px 4px;
+}
+.react-flow__attribution a {
+  color: var(--color-ink-3);
+}
+
+/* ============================================================
+ * Custom scrollbar for the SQL textarea
+ * ============================================================ */
+
 textarea::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-
 textarea::-webkit-scrollbar-track {
   background: transparent;
 }
-
 textarea::-webkit-scrollbar-thumb {
-  background-color: #d4d4d8;
-  border-radius: 4px;
+  background-color: var(--color-border-strong);
+  border-radius: var(--radius-pill);
 }
-
-@media (prefers-color-scheme: dark) {
-  textarea::-webkit-scrollbar-thumb {
-    background-color: #3f3f46;
-  }
+textarea::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ink-3);
 }
