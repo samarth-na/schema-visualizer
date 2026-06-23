@@ -45,7 +45,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       aria-label={mounted && theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
       aria-pressed={mounted ? theme === 'light' : undefined}
       className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-strong bg-surface-2 text-ink-2 transition-colors duration-fast ease-out hover:bg-surface-3 hover:text-ink',
+        'inline-flex h-8 w-8 items-center justify-center rounded-md border border-button-border bg-button-bg text-ink shadow-card transition-colors duration-fast ease-out hover:bg-surface-2',
         className
       )}
     >

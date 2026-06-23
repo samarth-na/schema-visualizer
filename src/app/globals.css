@@ -4,38 +4,45 @@
  * Design system tokens
  * Default: dark mode. Light mode is opt-in via data-theme="light".
  * All values are OKLCH. See DESIGN.md for rationale.
+ * Pastel palette: dark bg is a soft cool dark (not pure near-black),
+ * light bg is a soft warm cream (not pure white). Accents retain the
+ * same hue family but with reduced chroma for a softer reading.
  * ============================================================ */
 
 @theme {
   /* Color — dark mode (default) */
-  --color-bg: oklch(0.12 0 0);
-  --color-surface-1: oklch(0.16 0 0);
-  --color-surface-2: oklch(0.2 0 0);
-  --color-surface-3: oklch(0.24 0 0);
-  --color-border-subtle: oklch(0.24 0 0);
-  --color-border-strong: oklch(0.32 0 0);
-  --color-ink: oklch(0.96 0 0);
-  --color-ink-2: oklch(0.78 0 0);
-  --color-ink-3: oklch(0.66 0 0);
-  --color-primary: oklch(0.78 0.09 110);
-  --color-primary-hover: oklch(0.84 0.09 110);
-  --color-primary-pressed: oklch(0.72 0.09 110);
-  --color-on-primary: oklch(1 0 0);
-  --color-accent: oklch(0.78 0.13 75);
-  --color-accent-subtle: oklch(0.3 0.06 75);
-  --color-on-accent: oklch(0.18 0 0);
-  --color-focus: oklch(0.78 0.13 75);
-  --color-success: oklch(0.74 0.13 150);
-  --color-warning: oklch(0.78 0.14 80);
-  --color-error: oklch(0.68 0.18 25);
-  --color-info: oklch(0.74 0.08 230);
+  --color-bg: oklch(0.18 0.006 250);
+  --color-surface-1: oklch(0.22 0.006 250);
+  --color-surface-2: oklch(0.26 0.006 250);
+  --color-surface-3: oklch(0.3 0.006 250);
+  --color-border-subtle: oklch(0.3 0.006 250);
+  --color-border-strong: oklch(0.38 0.006 250);
+  --color-ink: oklch(0.94 0.006 250);
+  --color-ink-2: oklch(0.78 0.006 250);
+  --color-ink-3: oklch(0.64 0.006 250);
+  --color-primary: oklch(0.78 0.075 110);
+  --color-primary-hover: oklch(0.84 0.075 110);
+  --color-primary-pressed: oklch(0.72 0.075 110);
+  --color-on-primary: oklch(0.16 0.006 250);
+  --color-accent: oklch(0.78 0.11 75);
+  --color-accent-subtle: oklch(0.32 0.05 75);
+  --color-on-accent: oklch(0.18 0.006 250);
+  --color-focus: oklch(0.78 0.11 75);
+  --color-success: oklch(0.74 0.11 150);
+  --color-warning: oklch(0.78 0.12 80);
+  --color-error: oklch(0.68 0.15 25);
+  --color-info: oklch(0.74 0.07 230);
+
+  /* Phosphor-style card button (white in light, raised surface in dark) */
+  --color-button-bg: oklch(0.26 0.006 250);
+  --color-button-border: oklch(0.52 0.006 250);
 
   /* Data signals (independent of brand) */
-  --color-pk: oklch(0.78 0.13 75);
+  --color-pk: oklch(0.78 0.11 75);
   --color-id: oklch(0.74 0.06 280);
-  --color-uq: oklch(0.74 0.13 150);
-  --color-null: oklch(0.74 0 0);
-  --color-fk: oklch(0.78 0.13 75);
+  --color-uq: oklch(0.74 0.11 150);
+  --color-null: oklch(0.74 0 250);
+  --color-fk: oklch(0.78 0.11 75);
 
   /* Typography */
   --font-sans: var(--font-geist-sans);
@@ -57,16 +64,19 @@
   --z-modal: 60;
   --z-tooltip: 70;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
-  --shadow-md: 0 4px 8px oklch(0 0 0 / 0.3);
-  --shadow-lg: 0 8px 16px oklch(0 0 0 / 0.35);
-  --shadow-xl: 0 16px 32px oklch(0 0 0 / 0.4);
+  /* Shadows — softer, less harsh than before */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.22);
+  --shadow-lg: 0 8px 24px oklch(0 0 0 / 0.28);
+  --shadow-xl: 0 16px 40px oklch(0 0 0 / 0.32);
+  /* Phosphor-style subtle drop shadow for card buttons */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.06), 0 2px 4px oklch(0 0 0 / 0.04);
 
   /* Radii */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
+  --radius-xl: 10px;
   --radius-pill: 9999px;
 }
 
@@ -76,39 +86,44 @@
   }
 
   :root[data-theme="light"] {
-    /* Color — light mode overrides */
-    --color-bg: oklch(1 0 0);
-    --color-surface-1: oklch(0.985 0 0);
-    --color-surface-2: oklch(0.965 0 0);
-    --color-surface-3: oklch(0.94 0 0);
-    --color-border-subtle: oklch(0.92 0 0);
-    --color-border-strong: oklch(0.82 0 0);
-    --color-ink: oklch(0.18 0 0);
-    --color-ink-2: oklch(0.36 0 0);
-    --color-ink-3: oklch(0.46 0 0);
-    --color-primary: oklch(0.5 0.09 110);
-    --color-primary-hover: oklch(0.44 0.09 110);
-    --color-primary-pressed: oklch(0.4 0.09 110);
-    --color-on-primary: oklch(1 0 0);
-    --color-accent: oklch(0.55 0.14 65);
-    --color-accent-subtle: oklch(0.94 0.06 75);
-    --color-on-accent: oklch(1 0 0);
-    --color-focus: oklch(0.55 0.14 65);
-    --color-success: oklch(0.5 0.13 150);
-    --color-warning: oklch(0.55 0.14 70);
-    --color-error: oklch(0.5 0.18 25);
-    --color-info: oklch(0.5 0.08 230);
+    /* Color — light mode: pale paper, much less warm than before */
+    --color-bg: oklch(0.96 0.004 80);
+    --color-surface-1: oklch(0.94 0.004 80);
+    --color-surface-2: oklch(0.92 0.004 80);
+    --color-surface-3: oklch(0.89 0.004 80);
+    --color-border-subtle: oklch(0.9 0.004 80);
+    --color-border-strong: oklch(0.78 0.004 80);
+    --color-ink: oklch(0.24 0.008 80);
+    --color-ink-2: oklch(0.4 0.008 80);
+    --color-ink-3: oklch(0.54 0.008 80);
+    --color-primary: oklch(0.5 0.075 110);
+    --color-primary-hover: oklch(0.44 0.075 110);
+    --color-primary-pressed: oklch(0.4 0.075 110);
+    --color-on-primary: oklch(0.98 0.004 80);
+    --color-accent: oklch(0.55 0.12 65);
+    --color-accent-subtle: oklch(0.93 0.04 75);
+    --color-on-accent: oklch(0.98 0.004 80);
+    --color-focus: oklch(0.55 0.12 65);
+    --color-success: oklch(0.5 0.11 150);
+    --color-warning: oklch(0.55 0.12 70);
+    --color-error: oklch(0.5 0.15 25);
+    --color-info: oklch(0.5 0.07 230);
 
-    --color-pk: oklch(0.55 0.14 65);
+    /* Phosphor-style card button: near-white card with dark border */
+    --color-button-bg: oklch(0.99 0.003 80);
+    --color-button-border: oklch(0.3 0.008 80);
+
+    --color-pk: oklch(0.55 0.12 65);
     --color-id: oklch(0.5 0.08 280);
-    --color-uq: oklch(0.5 0.13 150);
-    --color-null: oklch(0.46 0 0);
-    --color-fk: oklch(0.55 0.14 65);
+    --color-uq: oklch(0.5 0.11 150);
+    --color-null: oklch(0.4 0.008 80);
+    --color-fk: oklch(0.55 0.12 65);
 
-    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.1);
-    --shadow-md: 0 4px 8px oklch(0 0 0 / 0.08);
-    --shadow-lg: 0 8px 16px oklch(0 0 0 / 0.1);
-    --shadow-xl: 0 16px 32px oklch(0 0 0 / 0.12);
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04);
+    --shadow-md: 0 2px 8px oklch(0 0 0 / 0.06);
+    --shadow-lg: 0 4px 16px oklch(0 0 0 / 0.08);
+    --shadow-xl: 0 8px 32px oklch(0 0 0 / 0.1);
+    --shadow-card: 0 1px 2px oklch(0 0 0 / 0.08), 0 2px 4px oklch(0 0 0 / 0.04);
 
     color-scheme: light;
   }

@@ -9,10 +9,19 @@ import { SchemaGraphCanvas } from '@/components/SchemaGraphCanvas';
 import { formatParseError, parseSql } from '@/lib/parseSql';
 import { SAMPLE_SCHEMA } from '@/lib/sampleSchema';
 import type { ParsedSchema } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 type SampleSchemaResult = { ok: true; schema: ParsedSchema } | { ok: false; error: string };
 
-export function SampleSchemaVisualizer() {
+type SampleSchemaVisualizerProps = {
+  compact?: boolean;
+  hero?: boolean;
+};
+
+export function SampleSchemaVisualizer({
+  compact = false,
+  hero = false,
+}: SampleSchemaVisualizerProps) {
   const result = useMemo<SampleSchemaResult>(() => {
     try {
       return { ok: true, schema: parseSql(SAMPLE_SCHEMA) };
@@ -31,22 +40,53 @@ export function SampleSchemaVisualizer() {
     );
   }
 
-  return (
-    <div className="overflow-hidden rounded-md border border-border-strong bg-surface-1 shadow-md">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle bg-surface-1 px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-ink">Sample schema</p>
-          <p className="text-xs text-ink-3">Pan, zoom, drag tables, and use the toolbar.</p>
+  if (hero) {
+    return (
+      <div className="overflow-hidden rounded-lg bg-surface-1">
+        <div className="flex h-7 items-center justify-between border-b border-border-subtle bg-surface-1 px-3">
+          <span className="font-mono text-[10px] text-ink-3">sample.app</span>
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-ink-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+            live
+          </span>
         </div>
-        <Link
-          href="/app"
-          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover"
-        >
-          Try your own SQL
-          <ArrowRight className="h-3 w-3" />
-        </Link>
+        <div className="h-[420px] sm:h-[500px] lg:h-[600px]">
+          <ReactFlowProvider>
+            <SchemaGraphCanvas schema={result.schema} selectedSchemaName="" showToolbar={false} />
+          </ReactFlowProvider>
+        </div>
       </div>
-      <div className="h-[520px] w-full sm:h-[600px] lg:h-[680px]">
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'overflow-hidden rounded-md border border-border-strong bg-surface-1 shadow-md',
+        compact && 'shadow-sm'
+      )}
+    >
+      {!compact && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle bg-surface-1 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">Sample schema</p>
+            <p className="text-xs text-ink-3">Pan, zoom, drag tables, and use the toolbar.</p>
+          </div>
+          <Link
+            href="/app"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover"
+          >
+            Try your own SQL
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+      <div
+        className={cn(
+          'w-full',
+          compact ? 'h-[360px] sm:h-[420px] lg:h-[460px]' : 'h-[520px] sm:h-[600px] lg:h-[680px]'
+        )}
+      >
         <ReactFlowProvider>
           <SchemaGraphCanvas schema={result.schema} selectedSchemaName="" />
         </ReactFlowProvider>

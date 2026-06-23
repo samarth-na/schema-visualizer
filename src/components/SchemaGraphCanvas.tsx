@@ -20,9 +20,16 @@ import { useExportSchemaToImage } from './useExportSchemaToImage';
 export type SchemaGraphCanvasProps = {
   schema: ParsedSchema;
   selectedSchemaName: string;
+  showToolbar?: boolean;
+  showLegend?: boolean;
 };
 
-export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCanvasProps) {
+export function SchemaGraphCanvas({
+  schema,
+  selectedSchemaName,
+  showToolbar = true,
+  showLegend = true,
+}: SchemaGraphCanvasProps) {
   const { tables, relationships } = schema;
   const reactFlowInstance = useReactFlow();
   const [selectedEdge, setSelectedEdge] = useState<Edge | undefined>(undefined);
@@ -142,17 +149,19 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
   return (
     <SchemaGraphContextProvider value={{ isDownloading, selectedEdge }}>
       <div className="relative flex h-full w-full flex-col">
-        <Toolbar
-          tables={tables}
-          disabled={!hasTables}
-          onResetLayout={resetLayout}
-          onFindTable={findTable}
-          onCopySQL={copyAsSQL}
-          onCopyMarkdown={copyAsMarkdown}
-          onDownloadPng={() => downloadImage('png')}
-          onDownloadSvg={() => downloadImage('svg')}
-          isDownloading={isDownloading}
-        />
+        {showToolbar && (
+          <Toolbar
+            tables={tables}
+            disabled={!hasTables}
+            onResetLayout={resetLayout}
+            onFindTable={findTable}
+            onCopySQL={copyAsSQL}
+            onCopyMarkdown={copyAsMarkdown}
+            onDownloadPng={() => downloadImage('png')}
+            onDownloadSvg={() => downloadImage('svg')}
+            isDownloading={isDownloading}
+          />
+        )}
 
         <div className="flex-1">
           {hasTables ? (
@@ -180,7 +189,7 @@ export function SchemaGraphCanvas({ schema, selectedSchemaName }: SchemaGraphCan
                 maskColor="oklch(0 0 0 / 0.20)"
                 className="!rounded-md !border !border-border-strong !bg-surface-1 !shadow-md"
               />
-              <SchemaGraphLegend />
+              {showLegend && <SchemaGraphLegend />}
             </ReactFlow>
           ) : (
             <div className="flex h-full items-center justify-center px-6">

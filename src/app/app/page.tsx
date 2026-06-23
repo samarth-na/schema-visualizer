@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactFlowProvider } from '@xyflow/react';
-import { Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Loader2, PanelLeftClose, PanelLeftOpen, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Toaster, toast } from 'sonner';
 
@@ -21,6 +21,7 @@ export default function AppPage() {
   const [selectedSchema, setSelectedSchema] = useState<string>('');
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const schemaNames = useMemo(() => {
     const names = Array.from(new Set(schema.tables.map((t) => t.schema)));
@@ -100,6 +101,19 @@ export default function AppPage() {
 
       <header className="z-sticky flex h-12 shrink-0 items-center justify-between border-b border-border-subtle bg-surface-1 px-4">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label={sidebarOpen ? 'Hide SQL panel' : 'Show SQL panel'}
+            aria-pressed={!sidebarOpen}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-button-border bg-button-bg text-ink shadow-card transition-colors duration-fast ease-out hover:bg-surface-2"
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose size={14} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen size={14} strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </button>
           <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
           <span className="text-sm font-semibold tracking-tight">SQL Schema Visualizer</span>
         </div>
@@ -112,9 +126,19 @@ export default function AppPage() {
       </header>
 
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-        <section
+        <aside
           aria-label="SQL input"
-          className="flex w-full shrink-0 flex-col overflow-hidden border-b border-border-subtle bg-surface-1 lg:w-[420px] lg:border-b-0 lg:border-r"
+          aria-hidden={!sidebarOpen}
+          // @ts-expect-error — `inert` is a valid HTML attribute; React 19 types accept it
+          inert={!sidebarOpen ? '' : undefined}
+          className={cn(
+            'flex shrink-0 flex-col overflow-hidden border-border-subtle bg-surface-1',
+            'border-b lg:border-b-0 lg:border-r',
+            'transition-[width,height,opacity] duration-slow ease-out',
+            sidebarOpen
+              ? 'h-[42vh] w-full opacity-100 lg:h-auto lg:w-[420px]'
+              : 'pointer-events-none h-0 w-full border-transparent opacity-0 lg:h-auto lg:w-0'
+          )}
         >
           <div className="flex h-9 shrink-0 items-center justify-between border-b border-border-subtle px-3">
             <span className="font-mono text-[11px] font-medium tracking-tight text-ink-2">sql</span>
@@ -145,6 +169,7 @@ export default function AppPage() {
               placeholder="Paste your CREATE TABLE statements here…"
               spellCheck={false}
               aria-label="SQL DDL input"
+              tabIndex={sidebarOpen ? 0 : -1}
               className="h-full w-full resize-none bg-transparent p-4 font-mono text-[13px] leading-[1.55] text-ink outline-none placeholder:text-ink-3"
             />
           </div>
@@ -168,6 +193,7 @@ export default function AppPage() {
                   id="schema-selector"
                   value={selectedSchema}
                   onChange={(e) => setSelectedSchema(e.target.value)}
+                  tabIndex={sidebarOpen ? 0 : -1}
                   className="h-7 rounded-md border border-border-strong bg-surface-2 px-2 font-mono text-[11px] text-ink outline-none transition-colors duration-fast ease-out focus:border-accent"
                 >
                   {schemaNames.map((name) => (
@@ -183,7 +209,7 @@ export default function AppPage() {
               onClick={handleRender}
               disabled={isRendering || !sql.trim()}
               className={cn(
-                'ml-auto flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-on-primary transition-colors duration-fast ease-out hover:bg-primary-hover active:bg-primary-pressed disabled:opacity-40',
+                'ml-auto flex h-9 items-center justify-center gap-2 rounded-lg border border-button-border bg-button-bg px-4 text-xs font-medium text-ink shadow-card transition-all duration-fast ease-out hover:-translate-y-0.5 hover:bg-surface-2 disabled:opacity-40 disabled:hover:translate-y-0',
                 isRendering && 'cursor-progress'
               )}
             >
@@ -191,9 +217,9 @@ export default function AppPage() {
               Render graph
             </button>
           </div>
-        </section>
+        </aside>
 
-        <section aria-label="Schema graph" className="relative flex-1 overflow-hidden bg-bg">
+        <section aria-label="Schema graph" className="relative flex flex-1 overflow-hidden bg-bg">
           <ReactFlowProvider>
             <SchemaGraphCanvas schema={filteredSchema} selectedSchemaName={selectedSchema} />
           </ReactFlowProvider>
