@@ -1,6 +1,23 @@
 import { Parser } from 'node-sql-parser';
 
-import type { ParsedColumn, ParsedRelationship, ParsedSchema, ParsedTable } from './types';
+import type {
+  ParsedColumn,
+  ParsedRelationship,
+  ParsedSchema,
+  ParsedTable,
+  SqlDialect,
+} from './types';
+
+type DialectConfig = {
+  database: string;
+  defaultSchema: string;
+};
+
+const DIALECT_CONFIGS: Record<SqlDialect, DialectConfig> = {
+  postgresql: { database: 'PostgresQL', defaultSchema: 'public' },
+  mysql: { database: 'MySQL', defaultSchema: 'default' },
+  sqlite: { database: 'SQLite', defaultSchema: 'main' },
+};
 
 const parser = new Parser();
 
@@ -24,28 +41,33 @@ function parseDataType(definition: unknown): string {
   if (!definition || typeof definition !== 'object') return 'unknown';
   const def = definition as Record<string, any>;
 
+  let base = 'unknown';
   if (typeof def.dataType === 'string') {
-    const base = def.dataType.toUpperCase();
+    base = def.dataType.toUpperCase();
     if (def.length != null && typeof def.length === 'number') {
       if (def.scale != null && typeof def.scale === 'number') {
-        return `${base}(${def.length}, ${def.scale})`;
+        base = `${base}(${def.length}, ${def.scale})`;
+      } else {
+        base = `${base}(${def.length})`;
       }
-      return `${base}(${def.length})`;
+    } else if (Array.isArray(def.length) && def.length.length > 0) {
+      base = `${base}(${def.length.join(', ')})`;
+    } else if (typeof def.length === 'string') {
+      base = `${base}(${def.length})`;
     }
-    if (Array.isArray(def.length) && def.length.length > 0) {
-      return `${base}(${def.length.join(', ')})`;
-    }
-    if (typeof def.length === 'string') {
-      return `${base}(${def.length})`;
-    }
-    return base;
+  } else if (typeof def.expr?.value === 'string') {
+    base = def.expr.value;
   }
 
-  if (typeof def.expr?.value === 'string') {
-    return def.expr.value;
+  if (Array.isArray(def.suffix) && def.suffix.length > 0) {
+    const suffix = def.suffix
+      .map((s: unknown) => (typeof s === 'string' ? s.toUpperCase() : String(s)))
+      .filter(Boolean)
+      .join(' ');
+    if (suffix) base = `${base} ${suffix}`;
   }
 
-  return 'unknown';
+  return base;
 }
 
 function isNotNull(definition: unknown): boolean {
@@ -98,17 +120,30 @@ function extractComment(definition: unknown): string | null {
   if (!def.comment) return null;
   if (typeof def.comment === 'string') return def.comment;
   if (typeof def.comment.value === 'string') return def.comment.value;
+  // MySQL wraps quoted strings: { type: 'single_quote_string', value: '...' }
+  if (def.comment.value && typeof def.comment.value === 'object') {
+    const inner = (def.comment.value as Record<string, any>).value;
+    if (typeof inner === 'string') return inner;
+  }
   return null;
 }
 
 function isIdentity(definition: unknown): boolean {
   if (!definition || typeof definition !== 'object') return false;
   const def = definition as Record<string, any>;
-  if (def.auto_increment === true || String(def.auto_increment).toLowerCase() === 'true')
-    return true;
-  if (def.identity === true || String(def.identity).toLowerCase() === 'true') return true;
-  const dt = String(def.definition?.dataType).toLowerCase();
-  return dt.includes('serial') || dt.includes('identity');
+
+  // PG SERIAL/BIGSERIAL is conveyed by the dataType name.
+  const dt = String(def.definition?.dataType ?? '').toLowerCase();
+  if (dt.includes('serial') || dt.includes('identity')) return true;
+
+  // MySQL emits auto_increment: "auto_increment"; SQLite emits
+  // auto_increment: "autoincrement"; some shapes use a boolean true.
+  const ai = def.auto_increment;
+  if (ai == null || ai === false) return false;
+  if (ai === true) return true;
+  const aiStr = String(ai).toLowerCase();
+  if (aiStr === 'false') return false;
+  return aiStr === 'auto_increment' || aiStr === 'autoincrement' || aiStr === 'identity';
 }
 
 function isPrimaryKey(definition: unknown): boolean {
@@ -129,9 +164,9 @@ function isUniqueColumn(definition: unknown): boolean {
   return false;
 }
 
-function getInlineReference(
-  definition: unknown
-): { schema: string; table: string; columns: string[] } | null {
+type ReferenceInfo = { schema: string; table: string; columns: string[] };
+
+function getInlineReference(definition: unknown, defaultSchema: string): ReferenceInfo | null {
   if (!definition || typeof definition !== 'object') return null;
   const def = definition as Record<string, any>;
   const ref = def.reference_definition;
@@ -142,7 +177,7 @@ function getInlineReference(
   if (!tableInfo) return null;
 
   const schemaName =
-    typeof tableInfo.db === 'string' ? normalizeIdentifier(tableInfo.db) : 'public';
+    typeof tableInfo.db === 'string' ? normalizeIdentifier(tableInfo.db) : defaultSchema;
   const tableName = typeof tableInfo.table === 'string' ? normalizeIdentifier(tableInfo.table) : '';
   const columns = Array.isArray(ref.definition)
     ? ref.definition.map((col: unknown) => extractColumnName(col))
@@ -151,9 +186,7 @@ function getInlineReference(
   return { schema: schemaName, table: tableName, columns };
 }
 
-function getTableLevelReference(
-  definition: unknown
-): { schema: string; table: string; columns: string[] } | null {
+function getTableLevelReference(definition: unknown, defaultSchema: string): ReferenceInfo | null {
   if (!definition || typeof definition !== 'object') return null;
   const def = definition as Record<string, any>;
   const ref = def.reference_definition;
@@ -164,7 +197,7 @@ function getTableLevelReference(
   if (!tableInfo) return null;
 
   const schemaName =
-    typeof tableInfo.db === 'string' ? normalizeIdentifier(tableInfo.db) : 'public';
+    typeof tableInfo.db === 'string' ? normalizeIdentifier(tableInfo.db) : defaultSchema;
   const tableName = typeof tableInfo.table === 'string' ? normalizeIdentifier(tableInfo.table) : '';
   const columns = Array.isArray(ref.definition)
     ? ref.definition.map((col: unknown) => extractColumnName(col))
@@ -175,16 +208,19 @@ function getTableLevelReference(
 
 function normalizeIdentifier(name: unknown): string {
   if (typeof name !== 'string') return String(name ?? '');
-  return name.replace(/^["'`]+|["'`]+$/g, '');
+  return name.replace(/^["`']+|["`']+$/g, '');
 }
 
-function getTableNameFromAst(tableArr: unknown): { schema: string; table: string } {
+function getTableNameFromAst(
+  tableArr: unknown,
+  defaultSchema: string
+): { schema: string; table: string } {
   const arr = Array.isArray(tableArr) ? tableArr : tableArr ? [tableArr] : [];
   const info = arr[0];
-  if (!info || typeof info !== 'object') return { schema: 'public', table: '' };
+  if (!info || typeof info !== 'object') return { schema: defaultSchema, table: '' };
   const { db, table } = info as Record<string, any>;
   return {
-    schema: typeof db === 'string' ? normalizeIdentifier(db) : 'public',
+    schema: typeof db === 'string' ? normalizeIdentifier(db) : defaultSchema,
     table: typeof table === 'string' ? normalizeIdentifier(table) : '',
   };
 }
@@ -194,16 +230,27 @@ function extractConstraintColumns(definition: unknown[]): string[] {
   return definition.map((col) => extractColumnName(col)).filter(Boolean);
 }
 
-export function parseSql(sql: string): ParsedSchema {
+function isTableLevelUniqueConstraint(constraintType: unknown): boolean {
+  if (typeof constraintType !== 'string') return false;
+  const ct = constraintType.toLowerCase();
+  // PostgreSQL emits 'unique'; MySQL emits 'unique key'.
+  return ct === 'unique' || ct === 'unique key';
+}
+
+function isTableLevelPrimaryConstraint(constraintType: unknown): boolean {
+  return typeof constraintType === 'string' && constraintType.toLowerCase() === 'primary key';
+}
+
+function isTableLevelForeignConstraint(constraintType: unknown): boolean {
+  return typeof constraintType === 'string' && constraintType.toLowerCase() === 'foreign key';
+}
+
+export function parseSql(sql: string, dialect: SqlDialect = 'postgresql'): ParsedSchema {
   const trimmed = sql.trim();
   if (!trimmed) return { tables: [], relationships: [] };
 
-  let ast: any;
-  try {
-    ast = parser.astify(trimmed, { database: 'PostgresQL' });
-  } catch (_err) {
-    ast = parser.astify(trimmed);
-  }
+  const config = DIALECT_CONFIGS[dialect];
+  const ast: any = parser.astify(trimmed, { database: config.database });
 
   const statements = Array.isArray(ast) ? ast : ast ? [ast] : [];
 
@@ -223,7 +270,7 @@ export function parseSql(sql: string): ParsedSchema {
     if (!stmt || typeof stmt !== 'object') continue;
 
     if (stmt.type === 'create' && String(stmt.keyword).toLowerCase() === 'table') {
-      const { schema, table } = getTableNameFromAst(stmt.table);
+      const { schema, table } = getTableNameFromAst(stmt.table, config.defaultSchema);
       const createDefs = Array.isArray(stmt.create_definitions) ? stmt.create_definitions : [];
 
       const columns: ParsedColumn[] = [];
@@ -234,12 +281,11 @@ export function parseSql(sql: string): ParsedSchema {
       for (const def of createDefs) {
         if (!def || typeof def !== 'object') continue;
         if (def.resource === 'constraint' || def.constraint_type) {
-          const ct = String(def.constraint_type).toLowerCase();
-          if (ct === 'primary key') {
+          if (isTableLevelPrimaryConstraint(def.constraint_type)) {
             for (const col of extractConstraintColumns(def.definition)) {
               pkColumns.add(col);
             }
-          } else if (ct === 'unique') {
+          } else if (isTableLevelUniqueConstraint(def.constraint_type)) {
             for (const col of extractConstraintColumns(def.definition)) {
               uniqueColumns.add(col);
             }
@@ -278,7 +324,7 @@ export function parseSql(sql: string): ParsedSchema {
         });
 
         // Inline FK reference
-        const inlineRef = getInlineReference(def);
+        const inlineRef = getInlineReference(def, config.defaultSchema);
         if (inlineRef && inlineRef.table && inlineRef.columns.length > 0) {
           relationships.push({
             id: `${schema}.${table}.${colName}->${inlineRef.schema}.${inlineRef.table}.${inlineRef.columns[0]}_${nextRelId()}`,
@@ -309,22 +355,21 @@ export function parseSql(sql: string): ParsedSchema {
     if (!stmt || typeof stmt !== 'object') continue;
 
     if (stmt.type === 'create' && String(stmt.keyword).toLowerCase() === 'table') {
-      const { schema, table } = getTableNameFromAst(stmt.table);
+      const { schema, table } = getTableNameFromAst(stmt.table, config.defaultSchema);
       const createDefs = Array.isArray(stmt.create_definitions) ? stmt.create_definitions : [];
 
       for (const def of createDefs) {
         if (!def || typeof def !== 'object') continue;
         if (!(def.resource === 'constraint' || def.constraint_type)) continue;
 
-        const ct = String(def.constraint_type).toLowerCase();
-        if (ct !== 'foreign key') continue;
+        if (!isTableLevelForeignConstraint(def.constraint_type)) continue;
 
         const constraintName =
           typeof def.constraint === 'string'
             ? normalizeIdentifier(def.constraint)
             : `${table}_fkey`;
         const sourceCols = extractConstraintColumns(def.definition);
-        const refInfo = getTableLevelReference(def);
+        const refInfo = getTableLevelReference(def, config.defaultSchema);
 
         if (!refInfo || !refInfo.table || sourceCols.length === 0 || refInfo.columns.length === 0)
           continue;
@@ -349,7 +394,7 @@ export function parseSql(sql: string): ParsedSchema {
     }
 
     if (stmt.type === 'alter') {
-      const { schema, table } = getTableNameFromAst(stmt.table);
+      const { schema, table } = getTableNameFromAst(stmt.table, config.defaultSchema);
       const exprs = Array.isArray(stmt.expr) ? stmt.expr : stmt.expr ? [stmt.expr] : [];
 
       for (const expr of exprs) {
@@ -362,15 +407,14 @@ export function parseSql(sql: string): ParsedSchema {
 
         for (const constraint of constraints) {
           if (!constraint || typeof constraint !== 'object') continue;
-          const ct = String(constraint.constraint_type).toLowerCase();
-          if (ct !== 'foreign key') continue;
+          if (!isTableLevelForeignConstraint(constraint.constraint_type)) continue;
 
           const constraintName =
             typeof constraint.constraint === 'string'
               ? normalizeIdentifier(constraint.constraint)
               : `${table}_fkey`;
           const sourceCols = extractConstraintColumns(constraint.definition);
-          const refInfo = getTableLevelReference(constraint);
+          const refInfo = getTableLevelReference(constraint, config.defaultSchema);
 
           if (!refInfo || !refInfo.table || sourceCols.length === 0 || refInfo.columns.length === 0)
             continue;
@@ -403,4 +447,8 @@ export function formatParseError(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
   return 'Failed to parse SQL. Please check your syntax.';
+}
+
+export function getDefaultSchemaForDialect(dialect: SqlDialect): string {
+  return DIALECT_CONFIGS[dialect].defaultSchema;
 }

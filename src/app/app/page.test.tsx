@@ -91,10 +91,12 @@ describe('App page', () => {
     fireEvent.click(screen.getByRole('button', { name: /render graph/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'schema' })).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'public' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'schema' }), {
+      target: { value: 'public' },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('canvas-tables')).toHaveTextContent('2');

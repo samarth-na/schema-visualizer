@@ -50,7 +50,7 @@ export function SampleSchemaVisualizer({
             live
           </span>
         </div>
-        <div className="h-[420px] sm:h-[500px] lg:h-[600px]">
+        <div className="h-[504px] sm:h-[600px] lg:h-[720px]">
           <ReactFlowProvider>
             <SchemaGraphCanvas schema={result.schema} selectedSchemaName="" showToolbar={false} />
           </ReactFlowProvider>

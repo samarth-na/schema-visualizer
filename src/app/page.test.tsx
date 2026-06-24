@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/components/SampleSchemaVisualizer', () => ({
-  SampleSchemaVisualizer: () => <div data-testid="sample-schema-visualizer" />,
+vi.mock('@/components/landing/AnnotatedGraph', () => ({
+  AnnotatedGraph: () => <div data-testid="annotated-graph" />,
 }));
 
 import Home from './page';
@@ -12,7 +12,7 @@ describe('Marketing page', () => {
     render(<Home />);
 
     expect(
-      screen.getByRole('heading', { name: /turn postgresql ddl into an interactive er diagram/i })
+      screen.getByRole('heading', { name: /turn sql ddl into an interactive er diagram/i })
     ).toBeInTheDocument();
 
     const cta = screen.getByRole('link', { name: /visualize your schema/i });

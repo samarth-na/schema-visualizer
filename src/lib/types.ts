@@ -1,3 +1,13 @@
+export type SqlDialect = 'postgresql' | 'mysql' | 'sqlite';
+
+export const SQL_DIALECTS: readonly SqlDialect[] = ['postgresql', 'mysql', 'sqlite'];
+
+export const SQL_DIALECT_LABELS: Record<SqlDialect, string> = {
+  postgresql: 'PostgreSQL',
+  mysql: 'MySQL',
+  sqlite: 'SQLite',
+};
+
 export type ParsedColumn = {
   name: string;
   dataType: string;

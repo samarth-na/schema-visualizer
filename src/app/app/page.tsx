@@ -8,12 +8,13 @@ import { Toaster, toast } from 'sonner';
 import { SchemaGraphCanvas } from '@/components/SchemaGraphCanvas';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { formatParseError, parseSql } from '@/lib/parseSql';
-import { SAMPLE_SCHEMA } from '@/lib/sampleSchema';
-import type { ParsedSchema } from '@/lib/types';
+import { SAMPLE_SCHEMAS } from '@/lib/sampleSchema';
+import { type ParsedSchema, SQL_DIALECT_LABELS, SQL_DIALECTS, type SqlDialect } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export default function AppPage() {
   const [sql, setSql] = useState('');
+  const [dialect, setDialect] = useState<SqlDialect>('postgresql');
   const [schema, setSchema] = useState<ParsedSchema>({
     tables: [],
     relationships: [],
@@ -32,7 +33,7 @@ export default function AppPage() {
     setError(null);
     setIsRendering(true);
     try {
-      const parsed = parseSql(sql);
+      const parsed = parseSql(sql, dialect);
       setSchema(parsed);
       const names = Array.from(new Set(parsed.tables.map((t) => t.schema))).sort();
       setSelectedSchema(names[0] ?? '');
@@ -53,15 +54,18 @@ export default function AppPage() {
   };
 
   const handleLoadExample = () => {
-    setSql(SAMPLE_SCHEMA);
+    const sample = SAMPLE_SCHEMAS[dialect];
+    setSql(sample);
     setError(null);
     setTimeout(() => {
       try {
-        const parsed = parseSql(SAMPLE_SCHEMA);
+        const parsed = parseSql(sample, dialect);
         setSchema(parsed);
         const names = Array.from(new Set(parsed.tables.map((t) => t.schema))).sort();
         setSelectedSchema(names[0] ?? '');
-        toast.success(`Loaded example schema: ${parsed.tables.length} tables`);
+        toast.success(
+          `Loaded ${SQL_DIALECT_LABELS[dialect]} example: ${parsed.tables.length} tables`
+        );
       } catch (err) {
         setError(formatParseError(err));
       }
@@ -140,8 +144,28 @@ export default function AppPage() {
               : 'pointer-events-none h-0 w-full border-transparent opacity-0 lg:h-auto lg:w-0'
           )}
         >
-          <div className="flex h-9 shrink-0 items-center justify-between border-b border-border-subtle px-3">
-            <span className="font-mono text-[11px] font-medium tracking-tight text-ink-2">sql</span>
+          <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-border-subtle px-3">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] font-medium tracking-tight text-ink-2">
+                sql
+              </span>
+              <label htmlFor="dialect-selector" className="sr-only">
+                SQL dialect
+              </label>
+              <select
+                id="dialect-selector"
+                value={dialect}
+                onChange={(e) => setDialect(e.target.value as SqlDialect)}
+                tabIndex={sidebarOpen ? 0 : -1}
+                className="h-7 rounded-md border border-border-strong bg-surface-2 px-2 font-mono text-[11px] text-ink outline-none transition-colors duration-fast ease-out focus:border-accent"
+              >
+                {SQL_DIALECTS.map((d) => (
+                  <option key={d} value={d}>
+                    {SQL_DIALECT_LABELS[d]}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"

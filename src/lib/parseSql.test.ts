@@ -361,4 +361,195 @@ describe('parseSql', () => {
       ).toBe(true);
     });
   });
+
+  describe('MySQL', () => {
+    it('parses a basic MySQL table with backtick identifiers', () => {
+      const result = parseSql(
+        'CREATE TABLE `users` (`id` INT NOT NULL PRIMARY KEY, `name` VARCHAR(100));',
+        'mysql'
+      );
+
+      expect(result.tables).toHaveLength(1);
+      const table = result.tables[0];
+      expect(table.name).toBe('users');
+      expect(table.schema).toBe('default');
+      expect(table.columns.map((c) => c.name)).toEqual(['id', 'name']);
+    });
+
+    it('preserves the database (schema) name from `db`.`table` prefixes', () => {
+      const result = parseSql(
+        'CREATE TABLE `blog`.`posts` (`id` INT NOT NULL PRIMARY KEY);',
+        'mysql'
+      );
+
+      expect(result.tables[0].name).toBe('posts');
+      expect(result.tables[0].schema).toBe('blog');
+    });
+
+    it('renders UNSIGNED suffix on column data types', () => {
+      const result = parseSql(
+        'CREATE TABLE `t` (`id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, `qty` BIGINT UNSIGNED);',
+        'mysql'
+      );
+
+      const cols = result.tables[0].columns;
+      expect(cols[0].dataType).toBe('INT UNSIGNED');
+      expect(cols[1].dataType).toBe('BIGINT UNSIGNED');
+    });
+
+    it('detects AUTO_INCREMENT as identity', () => {
+      const result = parseSql(
+        'CREATE TABLE `t` (`id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY);',
+        'mysql'
+      );
+
+      const col = result.tables[0].columns[0];
+      expect(col.isPrimaryKey).toBe(true);
+      expect(col.isIdentity).toBe(true);
+    });
+
+    it('extracts column COMMENTs', () => {
+      const result = parseSql(
+        "CREATE TABLE `t` (`id` INT NOT NULL PRIMARY KEY, `email` VARCHAR(255) NOT NULL COMMENT 'login email');",
+        'mysql'
+      );
+
+      const cols = result.tables[0].columns;
+      expect(cols[0].comment).toBeNull();
+      expect(cols[1].comment).toBe('login email');
+    });
+
+    it('recognizes UNIQUE KEY table-level constraints', () => {
+      const result = parseSql(
+        'CREATE TABLE `t` (`id` INT NOT NULL, `email` VARCHAR(255) NOT NULL, UNIQUE KEY `uk_email` (`email`));',
+        'mysql'
+      );
+
+      const cols = result.tables[0].columns;
+      expect(cols.find((c) => c.name === 'email')?.isUnique).toBe(true);
+      expect(cols.find((c) => c.name === 'id')?.isUnique).toBe(false);
+    });
+
+    it('creates a relationship for inline REFERENCES with ON DELETE CASCADE', () => {
+      const result = parseSql(
+        'CREATE TABLE `users` (`id` INT NOT NULL PRIMARY KEY);' +
+          'CREATE TABLE `posts` (`id` INT NOT NULL PRIMARY KEY, `user_id` INT NOT NULL REFERENCES `users`(`id`) ON DELETE CASCADE);',
+        'mysql'
+      );
+
+      expect(result.relationships).toHaveLength(1);
+      const rel = result.relationships[0];
+      expect(rel.sourceTable).toBe('posts');
+      expect(rel.sourceColumn).toBe('user_id');
+      expect(rel.targetTable).toBe('users');
+      expect(rel.targetColumn).toBe('id');
+      expect(rel.targetSchema).toBe('default');
+    });
+
+    it('creates a relationship for a CONSTRAINT FOREIGN KEY', () => {
+      const result = parseSql(
+        'CREATE TABLE `users` (`id` INT NOT NULL PRIMARY KEY);' +
+          'CREATE TABLE `orders` (' +
+          '`id` INT NOT NULL PRIMARY KEY, ' +
+          '`user_id` INT NOT NULL, ' +
+          'CONSTRAINT `fk_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE' +
+          ');',
+        'mysql'
+      );
+
+      expect(result.relationships).toHaveLength(1);
+      const rel = result.relationships[0];
+      expect(rel.constraintName).toBe('fk_user');
+      expect(rel.sourceTable).toBe('orders');
+      expect(rel.targetTable).toBe('users');
+    });
+
+    it('handles table-level composite PRIMARY KEYs', () => {
+      const result = parseSql(
+        'CREATE TABLE `t` (`a` INT NOT NULL, `b` INT NOT NULL, PRIMARY KEY (`a`, `b`));',
+        'mysql'
+      );
+
+      const cols = result.tables[0].columns;
+      expect(cols.find((c) => c.name === 'a')?.isPrimaryKey).toBe(true);
+      expect(cols.find((c) => c.name === 'b')?.isPrimaryKey).toBe(true);
+    });
+  });
+
+  describe('SQLite', () => {
+    it('parses a basic SQLite table and uses the main schema by default', () => {
+      const result = parseSql(
+        'CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);',
+        'sqlite'
+      );
+
+      expect(result.tables).toHaveLength(1);
+      const table = result.tables[0];
+      expect(table.name).toBe('users');
+      expect(table.schema).toBe('main');
+      expect(table.columns[1].isNullable).toBe(false);
+    });
+
+    it('detects INTEGER PRIMARY KEY AUTOINCREMENT as identity + primary key', () => {
+      const result = parseSql('CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT);', 'sqlite');
+
+      const col = result.tables[0].columns[0];
+      expect(col.isPrimaryKey).toBe(true);
+      expect(col.isIdentity).toBe(true);
+    });
+
+    it('creates a relationship for inline REFERENCES', () => {
+      const result = parseSql(
+        'CREATE TABLE users (id INTEGER PRIMARY KEY);' +
+          'CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE);',
+        'sqlite'
+      );
+
+      expect(result.relationships).toHaveLength(1);
+      const rel = result.relationships[0];
+      expect(rel.sourceTable).toBe('posts');
+      expect(rel.sourceColumn).toBe('user_id');
+      expect(rel.targetTable).toBe('users');
+      expect(rel.targetColumn).toBe('id');
+      expect(rel.targetSchema).toBe('main');
+    });
+
+    it('handles table-level composite PRIMARY KEYs', () => {
+      const result = parseSql('CREATE TABLE t (a INTEGER, b TEXT, PRIMARY KEY (a, b));', 'sqlite');
+
+      const cols = result.tables[0].columns;
+      expect(cols.find((c) => c.name === 'a')?.isPrimaryKey).toBe(true);
+      expect(cols.find((c) => c.name === 'b')?.isPrimaryKey).toBe(true);
+    });
+
+    it('parses SAMPLE_SCHEMA_SQLITE end-to-end', async () => {
+      const { SAMPLE_SCHEMA_SQLITE } = await import('./sampleSchema');
+      const result = parseSql(SAMPLE_SCHEMA_SQLITE, 'sqlite');
+
+      expect(result.tables.map((t) => `${t.schema}.${t.name}`).sort()).toEqual([
+        'main.authors',
+        'main.comments',
+        'main.post_tags',
+        'main.posts',
+        'main.tags',
+      ]);
+      expect(result.relationships).toHaveLength(4);
+    });
+  });
+
+  describe('MySQL end-to-end sample', () => {
+    it('parses SAMPLE_SCHEMA_MYSQL with 5 tables and 4 relationships', async () => {
+      const { SAMPLE_SCHEMA_MYSQL } = await import('./sampleSchema');
+      const result = parseSql(SAMPLE_SCHEMA_MYSQL, 'mysql');
+
+      expect(result.tables.map((t) => `${t.schema}.${t.name}`).sort()).toEqual([
+        'blog.authors',
+        'blog.comments',
+        'blog.post_tags',
+        'blog.posts',
+        'blog.tags',
+      ]);
+      expect(result.relationships).toHaveLength(4);
+    });
+  });
 });
