@@ -1,7 +1,7 @@
 # Fallow Report and Remediation Plan
 
 Generated: 2026-06-23  
-Tool: `npx fallow` (`fallow@2.101.0` installed by `npx`)  
+Tool: `bunx fallow` (`fallow@2.101.0`)  
 Project: `schema-visualizer`
 
 ## Commands Run
@@ -9,11 +9,11 @@ Project: `schema-visualizer`
 Per the Fallow quickstart, these commands were run from the project root:
 
 ```sh
-npx fallow
-npx fallow dead-code
-npx fallow dupes
-npx fallow health
-npx fallow fix --dry-run
+bunx fallow
+bunx fallow dead-code
+bunx fallow dupes
+bunx fallow health
+bunx fallow fix --dry-run
 ```
 
 The commands intentionally exited non-zero because Fallow found dead-code, duplication, and health findings. No source files were modified.
@@ -37,7 +37,7 @@ Fallow summary from the full run:
 Fallow’s suggested next command:
 
 ```sh
-fallow dead-code --trace src/components/SchemaGraphContext.tsx:SchemaGraphContext
+bunx fallow dead-code --trace src/components/SchemaGraphContext.tsx:SchemaGraphContext
 ```
 
 ## Dead Code Findings
@@ -45,7 +45,7 @@ fallow dead-code --trace src/components/SchemaGraphContext.tsx:SchemaGraphContex
 Command:
 
 ```sh
-npx fallow dead-code
+bunx fallow dead-code
 ```
 
 ### Unused Exports
@@ -157,7 +157,7 @@ Delete `ToolbarAction` from `src/lib/types.ts`.
 Command:
 
 ```sh
-npx fallow dupes
+bunx fallow dupes
 ```
 
 Fallow found 2 clone groups, both in `src/lib/parseSql.ts`.
@@ -243,7 +243,7 @@ This helper assumes the recommended `ParsedRelationship` schema fields have been
 Command:
 
 ```sh
-npx fallow health
+bunx fallow health
 ```
 
 ### Health Score
@@ -295,7 +295,7 @@ Fallow reported 3 medium refactoring targets:
 Command:
 
 ```sh
-npx fallow fix --dry-run
+bunx fallow fix --dry-run
 ```
 
 No files were modified. Fallow would remove these exports:
@@ -329,9 +329,9 @@ Do not apply that config blindly; the better fix is to remove/centralize the exp
 4. Re-run Fallow and TypeScript:
 
 ```sh
-npx fallow dead-code
-npx tsc --noEmit
-npm run build
+bunx fallow dead-code
+bunx tsc --noEmit
+bun run build
 ```
 
 5. Add parser tests.
@@ -340,9 +340,9 @@ npm run build
 8. Re-run full validation:
 
 ```sh
-npx fallow
-npx tsc --noEmit
-npm run build
+bunx fallow
+bunx tsc --noEmit
+bun run build
 ```
 
 ## Notes

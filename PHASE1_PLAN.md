@@ -32,9 +32,9 @@ These belong in later phases after tests exist.
 Before editing code, confirm current baseline:
 
 ```sh
-npx tsc --noEmit
-npm run build
-npx fallow dead-code
+bunx tsc --noEmit
+bun run build
+bunx fallow dead-code
 ```
 
 Expected current Fallow dead-code findings:
@@ -234,65 +234,36 @@ Update `package.json`:
 Then prefer:
 
 ```sh
-npm run typecheck
+bun run typecheck
 ```
 
-instead of direct `npx tsc --noEmit`.
+instead of direct `bunx tsc --noEmit`.
 
-### 10. Add ESLint for Next.js 16
+### 10. Use Biome only
 
-Install:
+Keep `biome.json` as the single linting and formatting configuration.
 
-```sh
-npm i -D eslint eslint-config-next
-```
-
-Update `package.json`:
+Use these scripts:
 
 ```json
-"lint": "eslint ."
+"lint": "biome lint .",
+"lint:fix": "biome lint . --write",
+"format": "biome format .",
+"format:fix": "biome format . --write",
+"check": "biome check .",
+"check:fix": "biome check . --write"
 ```
 
-Create `eslint.config.mjs`:
-
-```js
-import { defineConfig, globalIgnores } from 'eslint/config'
-import nextVitals from 'eslint-config-next/core-web-vitals'
-import nextTs from 'eslint-config-next/typescript'
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  globalIgnores([
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-  ]),
-])
-
-export default eslintConfig
-```
-
-Important:
-
-- Do not use `next lint`; it is removed in Next.js 16.
-- If lint surfaces existing `any` warnings in `parseSql.ts`, report them rather than refactoring parser internals in Phase 1.
+If Biome surfaces existing `any` warnings in `parseSql.ts`, report them rather than refactoring parser internals in Phase 1.
 
 ## Validation
 
 After Phase 1 code changes:
 
 ```sh
-npm run typecheck
-npm run build
-npx fallow dead-code
-```
-
-If ESLint was added:
-
-```sh
-npm run lint
+bun run typecheck
+bun run build
+bunx fallow dead-code
 ```
 
 Expected Fallow improvement:
@@ -304,7 +275,7 @@ Expected Fallow improvement:
 If any dead exports remain:
 
 ```sh
-npx fallow dead-code --trace <file>:<symbol>
+bunx fallow dead-code --trace <file>:<symbol>
 ```
 
 ## Rollback Plan
@@ -312,8 +283,8 @@ npx fallow dead-code --trace <file>:<symbol>
 If a Phase 1 change causes problems:
 
 1. Revert only the failing file.
-2. Run `npm run typecheck` or `npx tsc --noEmit`.
-3. Run `npm run build`.
+2. Run `bun run typecheck` or `bunx tsc --noEmit`.
+3. Run `bun run build`.
 4. Leave parser and relationship model unchanged.
 
 ## Deferred Follow-Ups

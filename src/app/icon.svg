@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>SQL Schema Visualizer icon</title>
+  <style>
+    .bg { fill: #262626; }
+    .fg { fill: #e8a84f; }
+    .stroke { stroke: #e8a84f; }
+    @media (prefers-color-scheme: light) {
+      .bg { fill: #f5f5f5; }
+      .fg { fill: #b07d2f; }
+      .stroke { stroke: #b07d2f; }
+    }
+  </style>
+  <rect class="bg" x="2" y="2" width="28" height="28" rx="6"/>
+  <rect class="stroke" x="8" y="9" width="16" height="14" rx="2.5" fill="none" stroke-width="2"/>
+  <rect class="fg" x="9.5" y="10.5" width="13" height="4" rx="1"/>
+  <line class="stroke" x1="9.5" y1="17" x2="22.5" y2="17" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

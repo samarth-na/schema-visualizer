@@ -22,13 +22,13 @@ Commands run during review:
 
 | Command | Result |
 |---|---|
-| `npx tsc --noEmit` | Passed |
-| `npm run build` | Passed |
-| `npx fallow` | Ran; findings detected |
-| `npx fallow dead-code` | Ran; unused exports/types and duplicate exports detected |
-| `npx fallow dupes` | Ran; duplicate blocks detected in `src/lib/parseSql.ts` |
-| `npx fallow health` | Ran; health score `82 B` |
-| `npx fallow fix --dry-run` | Ran; preview only, no files modified |
+| `bunx tsc --noEmit` | Passed |
+| `bun run build` | Passed |
+| `bunx fallow` | Ran; findings detected |
+| `bunx fallow dead-code` | Ran; unused exports/types and duplicate exports detected |
+| `bunx fallow dupes` | Ran; duplicate blocks detected in `src/lib/parseSql.ts` |
+| `bunx fallow health` | Ran; health score `82 B` |
+| `bunx fallow fix --dry-run` | Ran; preview only, no files modified |
 
 Fallow summary:
 
@@ -343,7 +343,7 @@ File: `package.json`
 
 ### Linter / formatter: Biome
 
-This project uses **Biome 2.5** (`@biomejs/biome`) as the single tool for linting and formatting. `next lint` was removed in Next.js 16, and ESLint is not installed.
+This project uses **Biome 2.5** (`@biomejs/biome`) as the single tool for linting and formatting.
 
 Config lives in `biome.json`. Highlights:
 
@@ -358,7 +358,7 @@ Config lives in `biome.json`. Highlights:
 Install / update:
 
 ```sh
-npm i -D @biomejs/biome
+bun add -d @biomejs/biome
 ```
 
 ### Tests
@@ -407,28 +407,28 @@ grep -R "file.svg\|globe.svg\|next.svg\|vercel.svg\|window.svg" -n src public RE
 For cleanup-only changes:
 
 ```sh
-npx fallow dead-code
-npm run typecheck
-npm run check
-npm run build
+bunx fallow dead-code
+bun run typecheck
+bun run check
+bun run build
 ```
 
 For parser or graph behavior changes:
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 For final full validation:
 
 ```sh
-npx fallow
-npm run test
-npm run typecheck
-npm run check
-npm run build
+bunx fallow
+bun run test
+bun run typecheck
+bun run check
+bun run build
 ```
 
-`npm run check` runs `biome check .` (lint + format, read-only). Use `npm run check:fix` to apply safe fixes. Use the per-tool scripts (`npm run lint` / `npm run format`) when you want only one.
+`bun run check` runs `biome check .` (lint + format, read-only). Use `bun run check:fix` to apply safe fixes. Use the per-tool scripts (`bun run lint` / `bun run format`) when you want only one.

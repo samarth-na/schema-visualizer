@@ -18,13 +18,13 @@ For component tests, add **@testing-library/react** and **jsdom**.
 ### Minimal install for parser/lib tests
 
 ```sh
-npm install -D vitest
+bun add -d vitest
 ```
 
 ### Full install for component tests
 
 ```sh
-npm install -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom
+bun add -d vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/jest-dom
 ```
 
 ### Scripts to add to `package.json`
@@ -510,17 +510,17 @@ src/
 After test setup:
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 If scripts do not exist yet:
 
 ```sh
-npx vitest run
-npx tsc --noEmit
-npm run build
+bunx vitest run
+bunx tsc --noEmit
+bun run build
 ```
 
 ## Notes

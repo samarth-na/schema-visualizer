@@ -19,13 +19,13 @@ Paste `CREATE TABLE` / foreign-key DDL, click **Render Graph**, and explore the 
 Install dependencies:
 
 ```sh
-npm install
+bun install
 ```
 
 Run the development server:
 
 ```sh
-npm run dev
+bun run dev
 ```
 
 Open http://localhost:3000.
@@ -33,13 +33,13 @@ Open http://localhost:3000.
 ## Available Commands
 
 ```sh
-npm run dev      # Start the Turbopack dev server
-npm run build    # Create a production build
-npm run start    # Start the production server after build
-npx tsc --noEmit # Type-check the project
+bun run dev       # Start the Turbopack dev server
+bun run build     # Create a production build
+bun run start     # Start the production server after build
+bun run typecheck # Type-check the project
+bun run test      # Run Vitest
+bun run check     # Run Biome lint + format checks
 ```
-
-There are currently no `lint` or `test` scripts in `package.json`.
 
 ## What It Supports Today
 
@@ -61,10 +61,7 @@ The parser is focused on PostgreSQL-style DDL and currently handles common cases
 
 See `gpt5.5-report.md`, `fallow.md`, and `AUDIT.md` for detailed findings. Important limitations include:
 
-- Cross-schema relationship filtering currently needs correction.
-- `ParsedRelationship` does not yet store source/target schema names.
-- `parseSql.ts` depends on fragile `node-sql-parser` AST shapes and has no regression tests yet.
-- React Flow attribution must not be hidden unless the project has a valid Pro entitlement.
+- `parseSql.ts` depends on fragile `node-sql-parser` AST shapes; keep regression tests green before refactoring parser logic.
 - Export-to-image behavior should be manually verified for large, zoomed, or panned graphs.
 - README/public assets were originally create-next-app boilerplate; this README has been updated, but unused public SVGs may still be removable.
 
@@ -73,7 +70,8 @@ See `gpt5.5-report.md`, `fallow.md`, and `AUDIT.md` for detailed findings. Impor
 ```txt
 src/app/
   layout.tsx       # Root layout
-  page.tsx         # Main client page
+  page.tsx         # Marketing landing page
+  app/page.tsx     # Visualizer app
   globals.css      # Global styles
 
 src/components/
@@ -96,7 +94,8 @@ src/lib/
 
 ## Development Notes
 
-- This is Next.js 16. Linting and formatting are handled by Biome (`biome.json`); use `npm run check` / `npm run check:fix`. Do not add ESLint or run `next lint`.
+- Use Bun for package management and scripts. `bun.lock` is the lockfile.
+- This is Next.js 16. Linting and formatting are handled by Biome (`biome.json`); use `bun run check` / `bun run check:fix`.
 - Tailwind 4 is configured through `postcss.config.mjs` and `@tailwindcss/postcss`.
 - The `@/*` path alias resolves to `./src/*`.
 - Add parser tests before refactoring `src/lib/parseSql.ts`.
@@ -110,9 +109,6 @@ src/lib/
 
 ## Recommended Next Steps
 
-1. Remove `proOptions={{ hideAttribution: true }}` from the React Flow canvas unless React Flow Pro is licensed.
-2. Add `typecheck`, `lint`, and `test` scripts.
-3. Add parser regression tests.
-4. Extend relationships to include source/target schema names.
-5. Fix selected-schema relationship filtering.
-6. Apply safe Fallow cleanup: constants, unused type exports, internal-only exports, and duplicated SQL serialization.
+1. Clear current Fallow dead-code findings.
+2. Start Phase 4 from `ROADMAP.md`: parser helper dedupe and graph construction refactors.
+3. Keep `bun run test`, `bun run typecheck`, and `bun run build` green after each small change.

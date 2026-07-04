@@ -14,7 +14,7 @@ Completed change sets:
 3. Applied safe Fallow cleanup from `PHASE1_PLAN.md`.
 4. Added Vitest, parser/utility/graph/component tests, and `isNotNull` fix.
 5. Extended `ParsedRelationship` with schema fields, updated parser builders, schema filtering, schema-qualified graph IDs, and synthetic foreign nodes.
-6. All validations pass (`npm run test`, `npm run typecheck`, `npm run build`, `npx fallow dead-code`).
+6. All validations pass (`bun run test`, `bun run typecheck`, `bun run build`, `bunx fallow dead-code`).
 
 Do **not** refactor `parseSql.ts` before Phase 2 tests exist.
 
@@ -83,8 +83,8 @@ Keep existing scripts:
 ### Validation
 
 ```sh
-npm run typecheck
-npm run build
+bun run typecheck
+bun run build
 ```
 
 ### Exit Criteria
@@ -173,9 +173,9 @@ Extract repeated button class string into `toolbarButtonClass`.
 ### Validation
 
 ```sh
-npm run typecheck
-npm run build
-npx fallow dead-code
+bun run typecheck
+bun run build
+bunx fallow dead-code
 ```
 
 ### Exit Criteria
@@ -210,7 +210,7 @@ Add tests before changing parser behavior or relationship modeling.
 #### 2.1 Install Vitest
 
 ```sh
-npm install -D vitest
+bun add -d vitest
 ```
 
 Add scripts:
@@ -248,9 +248,9 @@ Assert current table and relationship endpoints after verifying current sample c
 ### Validation
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 ### Exit Criteria
@@ -270,7 +270,7 @@ npm run build
 - `src/lib/graph.test.ts` covers empty/single-table/FK cases, synthetic foreign nodes, dedup, schema-qualified IDs, and dagre layout.
 - `src/app/page.test.tsx` and `src/components/__tests__/` cover page interactions and component rendering.
 - `isNotNull` early-return bug fixed in `src/lib/parseSql.ts:53` (now returns `false`).
-- `npm run test` passes: 46 tests across 9 files.
+- `bun run test` passes: 64 tests across 10 files.
 
 ---
 
@@ -361,9 +361,9 @@ Use real `rel.targetSchema` and `rel.targetTable` instead of guessing schema fro
 ### Validation
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 Manual checks:
@@ -388,7 +388,7 @@ Manual checks:
 - `src/lib/graph.ts:85-86` uses `rel.targetSchema` and `rel.targetTable` for synthetic foreign nodes instead of guessing the schema.
 - Cross-schema and same-name tests added to `parseSql.test.ts` (lines 241-291) and `graph.test.ts` (lines 50-73, 104-131).
 - Schema-filtering behavior asserted in `page.test.tsx:75-103`.
-- `npm run test` passes: 46 tests across 9 files.
+- `bun run test` passes: 64 tests across 10 files.
 
 ---
 
@@ -479,9 +479,9 @@ Use real `rel.targetSchema` and `rel.targetTable` instead of guessing schema fro
 ### Validation
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 Manual checks:
@@ -561,11 +561,11 @@ Suggested helpers:
 ### Validation
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
-npx fallow health
-npx fallow dupes
+bun run test
+bun run typecheck
+bun run build
+bunx fallow health
+bunx fallow dupes
 ```
 
 ### Exit Criteria
@@ -586,7 +586,7 @@ Read these before starting Phase 5:
 - `gpt5.5-report.md` — §Medium-Priority Findings → `Clipboard failures are silent`, `Export-to-image implementation needs verification`, and §Low-Priority Cleanup → `Add error boundary` / asset cleanup.
 - `AUDIT.md` — §4 Correctness / Bugs → no error boundary and export concerns, plus §6 Documentation / Assets for public SVG cleanup.
 - `README.md` — §Known Limitations, §Available Commands, and §Reports and Plans. Update these if limitations, scripts, or assets change.
-- `fallow.md` — §Recommended Action Plan and §Notes, then re-run full `npx fallow` after cleanup.
+- `fallow.md` — §Recommended Action Plan and §Notes, then re-run full `bunx fallow` after cleanup.
 
 ### Goal
 
@@ -642,10 +642,10 @@ Then remove unused create-next-app SVGs.
 ### Validation
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
-npx fallow
+bun run test
+bun run typecheck
+bun run build
+bunx fallow
 ```
 
 ### Exit Criteria
@@ -665,13 +665,12 @@ If you want clean reviewable chunks, use this order:
 2. `fix: restore react flow attribution and add typecheck script`.
 3. `refactor: centralize table layout constants`.
 4. `refactor: dedupe SQL serialization and internal exports`.
-5. `chore: add eslint config for next 16`.
-6. `test: add parser regression tests`.
-7. `fix: add schema-aware relationships`.
-8. `refactor: split parser foreign key helpers`.
-9. `refactor: simplify graph construction`.
-10. `feat: add error boundary and improve failure toasts`.
-11. `chore: remove unused public assets`.
+5. `test: add parser regression tests`.
+6. `fix: add schema-aware relationships`.
+7. `refactor: split parser foreign key helpers`.
+8. `refactor: simplify graph construction`.
+9. `feat: add error boundary and improve failure toasts`.
+10. `chore: remove unused public assets`.
 
 ## What Not To Do First
 
@@ -680,7 +679,7 @@ Avoid these as first steps:
 - Do not refactor `parseSql.ts` before tests.
 - Do not run `fallow fix` directly; use the plan in `fallow.md` / `PHASE1_PLAN.md`.
 - Do not add schema-qualified graph IDs without updating tests and `findTable` behavior.
-- Do not use `next lint`; Next.js 16 removed it.
+- Use Biome for linting and formatting.
 - Do not delete public assets without confirming they are unreferenced.
 
 ## One-Week Practical Plan
@@ -728,7 +727,7 @@ If working in short daily sessions:
 |:---|:---|---|
 | 0 | ✅ Done | Attribution restored, typecheck script added. |
 | 1 | ✅ Done | Constants centralized, internal exports removed, `tablesToSQL` in use, `ToolbarAction` deleted, toolbar class deduped. Fallow dead-code: 0 issues. |
-| 2 | ✅ Done | Vitest installed; 46 tests across 9 files covering parser, utils, graph, page, and components. `isNotNull` fix landed. |
+| 2 | ✅ Done | Vitest installed; 64 tests across 10 files covering parser, utils, graph, page, and components. `isNotNull` fix landed. |
 | 3 | ✅ Done | `ParsedRelationship` carries `sourceSchema`/`targetSchema`; parser, page filter, graph IDs, and synthetic foreign nodes all schema-aware. |
 | 4 | ⬜ Not started | Next. Depends on Phase 2/3 tests staying green. |
 | 5 | ⬜ Not started | Can be partially parallel after Phase 1. |

@@ -23,15 +23,15 @@ The recommended approach is to make small safe cleanup changes first, add parser
 
 | Command | Result |
 |---|---|
-| `npx tsc --noEmit` | Passed |
-| `npm run build` | Passed |
-| `npx fallow` | Ran; exited non-zero because findings were detected |
-| `npx fallow dead-code` | Ran; found unused exports/types and duplicate exports |
-| `npx fallow dupes` | Ran; found duplicated blocks in `src/lib/parseSql.ts` |
-| `npx fallow health` | Ran; reported health score `82 B` |
-| `npx fallow fix --dry-run` | Ran; preview only, no files modified |
+| `bunx tsc --noEmit` | Passed |
+| `bun run build` | Passed |
+| `bunx fallow` | Ran; exited non-zero because findings were detected |
+| `bunx fallow dead-code` | Ran; found unused exports/types and duplicate exports |
+| `bunx fallow dupes` | Ran; found duplicated blocks in `src/lib/parseSql.ts` |
+| `bunx fallow health` | Ran; reported health score `82 B` |
+| `bunx fallow fix --dry-run` | Ran; preview only, no files modified |
 
-There are currently no `lint` or `test` scripts in `package.json`.
+The project now has Biome and Vitest scripts in `package.json`.
 
 ## Current Fallow Snapshot
 
@@ -101,8 +101,8 @@ Remove the prop entirely:
 Run:
 
 ```sh
-npx tsc --noEmit
-npm run build
+bunx tsc --noEmit
+bun run build
 ```
 
 #### Risk
@@ -297,7 +297,7 @@ Add a lightweight test runner. Since the project already has TypeScript and `tsx
 Option A — Vitest:
 
 ```sh
-npm i -D vitest
+bun add -d vitest
 ```
 
 `package.json`:
@@ -501,9 +501,9 @@ Remove local constants from `TableNode.tsx`.
 Run:
 
 ```sh
-npx fallow dead-code
-npx tsc --noEmit
-npm run build
+bunx fallow dead-code
+bunx tsc --noEmit
+bun run build
 ```
 
 ---
@@ -813,49 +813,27 @@ File: `package.json`
 }
 ```
 
-### Add ESLint for Next.js 16
+### Use Biome only
 
-Install:
+Keep Biome as the only linting and formatting tool.
 
-```sh
-npm i -D eslint eslint-config-next
-```
-
-Add script:
+Recommended scripts:
 
 ```json
-"lint": "eslint ."
+"lint": "biome lint .",
+"lint:fix": "biome lint . --write",
+"format": "biome format .",
+"format:fix": "biome format . --write",
+"check": "biome check .",
+"check:fix": "biome check . --write"
 ```
-
-Create `eslint.config.mjs`:
-
-```js
-import { defineConfig, globalIgnores } from 'eslint/config'
-import nextVitals from 'eslint-config-next/core-web-vitals'
-import nextTs from 'eslint-config-next/typescript'
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  globalIgnores([
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-  ]),
-])
-
-export default eslintConfig
-```
-
-Do not use `next lint`; it is removed in Next.js 16.
 
 ### Add parser tests
 
 Preferred:
 
 ```sh
-npm i -D vitest
+bun add -d vitest
 ```
 
 `package.json`:
@@ -883,8 +861,8 @@ Goal: reduce immediate non-code risk.
 Validation:
 
 ```sh
-npm run typecheck
-npm run build
+bun run typecheck
+bun run build
 ```
 
 ### Phase 1 — Safe Fallow cleanup
@@ -901,9 +879,9 @@ Goal: reduce dead exports and duplication without changing parser behavior.
 Validation:
 
 ```sh
-npx fallow dead-code
-npx tsc --noEmit
-npm run build
+bunx fallow dead-code
+bunx tsc --noEmit
+bun run build
 ```
 
 ### Phase 2 — Testing foundation
@@ -918,9 +896,9 @@ Goal: protect parser behavior before refactor.
 Validation:
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 ### Phase 3 — Schema-qualified relationships
@@ -937,9 +915,9 @@ Goal: fix the biggest correctness issue.
 Validation:
 
 ```sh
-npm run test
-npm run typecheck
-npm run build
+bun run test
+bun run typecheck
+bun run build
 ```
 
 Manual validation:
@@ -960,9 +938,9 @@ Goal: reduce Fallow complexity findings.
 Validation:
 
 ```sh
-npm run test
-npx fallow health
-npm run build
+bun run test
+bunx fallow health
+bun run build
 ```
 
 ### Phase 5 — UX hardening
